@@ -137,7 +137,7 @@ export async function POST(req: Request) {
   try {
     // --- PERBAIKAN: Client diinisialisasi DI DALAM fungsi ---
     const client = new ImageAnnotatorClient({
-      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
+      credentials: JSON.parse((process.env.GOOGLE_CREDENTIALS as string).replace(/\\n/g, '\n')),
     });
 
     const formData = await req.formData();

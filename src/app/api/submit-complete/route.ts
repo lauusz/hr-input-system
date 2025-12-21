@@ -7,7 +7,7 @@ import { Storage } from '@google-cloud/storage';
 async function uploadToGCS(file: File, filename: string): Promise<string> {
   // 1. INISIALISASI STORAGE DI DALAM FUNGSI (Agar aman saat Build)
   const storage = new Storage({
-    credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
+    credentials: JSON.parse((process.env.GOOGLE_CREDENTIALS as string).replace(/\\n/g, '\n')),
   });
 
   const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'hr-uploads-niko-2025';
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   try {
     // 2. INISIALISASI GOOGLE AUTH DI DALAM FUNGSI (Agar aman saat Build)
     const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
+      credentials: JSON.parse((process.env.GOOGLE_CREDENTIALS as string).replace(/\\n/g, '\n')),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
