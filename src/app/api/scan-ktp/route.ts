@@ -1,33 +1,19 @@
 // src/app/api/scan-ktp/route.ts
 import { NextResponse } from 'next/server';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
-import path from 'path';
 
-// const keyPath = path.join(process.cwd(), 'kunci_google.json');
+// --- HELPER FUNCTIONS (Aman ditaruh di luar) ---
 
-// const client = new ImageAnnotatorClient({
-//   keyFilename: keyPath,
-// });
-
-const client = new ImageAnnotatorClient({
-  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
-});
-
-// Helper untuk mengubah "30-04-2002" menjadi "2002-04-30" (Format HTML Date Input)
 function formatDateForInput(dateStr: string) {
-  // Hapus spasi dan karakter non-digit kecuali strip/slash
   const cleanDate = dateStr.replace(/[^0-9\-\/]/g, '');
   
-  // Cek pemisah (bisa strip - atau slash /)
   let parts;
   if (cleanDate.includes('-')) parts = cleanDate.split('-');
   else if (cleanDate.includes('/')) parts = cleanDate.split('/');
-  else return ''; // Gagal parse
+  else return '';
 
-  // Asumsi format indo: DD-MM-YYYY
   if (parts.length === 3) {
     const [day, month, year] = parts;
-    // Return format YYYY-MM-DD
     return `${year}-${month}-${day}`;
   }
   return '';
@@ -38,8 +24,8 @@ function parseKTPData(fullText: string) {
   const data = {
     nik: '',
     nama: '',
-    tempatLahir: '',  // DIPISAH
-    tanggalLahir: '', // DIPISAH (Format YYYY-MM-DD)
+    tempatLahir: '', 
+    tanggalLahir: '',
     jenisKelamin: '',
     alamat: '',
     rtRw: '',
@@ -54,32 +40,32 @@ function parseKTPData(fullText: string) {
   let nikIndex = -1;
   let rtRwIndex = -1;
 
-  // --- TAHAP 1: Global Search ---
+  // TAHAP 1: Global Search
   lines.forEach((line, index) => {
     const upperLine = line.toUpperCase().trim();
 
-    // 1. NIK
+    // NIK
     const nikMatch = line.match(/\d{16}/);
     if (nikMatch) {
       data.nik = nikMatch[0];
       nikIndex = index;
     }
 
-    // 2. RT/RW
+    // RT/RW
     if (line.match(/\d{3}\/\d{3}/)) {
         data.rtRw = line.match(/\d{3}\/\d{3}/)![0];
         rtRwIndex = index; 
     }
 
-    // 3. Status Perkawinan (Dropdown Options)
+    // Status Perkawinan
     if (!data.statusPerkawinan) {
         if (upperLine.includes('BELUM KAWIN')) data.statusPerkawinan = 'BELUM KAWIN';
         else if (upperLine.includes('KAWIN')) data.statusPerkawinan = 'KAWIN';
         else if (upperLine.includes('CERAI MATI')) data.statusPerkawinan = 'CERAI MATI';
-        else if (upperLine.includes('CERAI HIDUP') || upperLine.includes('CERAI')) data.statusPerkawinan = 'CERAI HIDUP'; // Default Cerai = Cerai Hidup
+        else if (upperLine.includes('CERAI HIDUP') || upperLine.includes('CERAI')) data.statusPerkawinan = 'CERAI HIDUP';
     }
 
-    // 4. Agama (Dropdown Options)
+    // Agama
     if (!data.agama) {
         if (upperLine.includes('ISLAM')) data.agama = 'ISLAM';
         else if (upperLine.includes('KRISTEN')) data.agama = 'KRISTEN'; 
@@ -87,12 +73,10 @@ function parseKTPData(fullText: string) {
         else if (upperLine.includes('HINDU')) data.agama = 'HINDU';
         else if (upperLine.includes('BUDDHA')) data.agama = 'BUDDHA';
         else if (upperLine.includes('KONGHUCU')) data.agama = 'KONGHUCU';
-        else if (upperLine.includes('KEPERCAYAAN') || upperLine.includes('TUHAN YANG MAHA ESA')) {
-            data.agama = 'KEPERCAYAAN TERHADAP TUHAN YME';
-        }
+        else if (upperLine.includes('KEPERCAYAAN')) data.agama = 'KEPERCAYAAN TERHADAP TUHAN YME';
     }
 
-    // 5. Pekerjaan
+    // Pekerjaan
     if (!data.pekerjaan) {
         if (upperLine.includes('BELUM/TIDAK BEKERJA')) data.pekerjaan = 'BELUM/TIDAK BEKERJA';
         else if (upperLine.includes('PELAJAR/MAHASISWA')) data.pekerjaan = 'PELAJAR/MAHASISWA';
@@ -102,7 +86,7 @@ function parseKTPData(fullText: string) {
         else if (upperLine.includes('MENGURUS RUMAH')) data.pekerjaan = 'MENGURUS RUMAH TANGGA';
     }
 
-    // 6. Kecamatan
+    // Kecamatan
     if (upperLine.includes('KECAMATAN') && !data.kecamatan) {
         let val = line.replace(/Kecamatan/i, '').replace(/[:]/g, '').trim();
         if (val.length > 3) data.kecamatan = val;
@@ -110,7 +94,7 @@ function parseKTPData(fullText: string) {
     }
   });
 
-  // --- TAHAP 2: Anchor Logic ---
+  // TAHAP 2: Anchor Logic (Berdasarkan posisi NIK)
   if (nikIndex !== -1) {
     // Nama
     if (lines[nikIndex + 1]) {
@@ -118,21 +102,14 @@ function parseKTPData(fullText: string) {
         if (!val.match(/\d/)) data.nama = val;
     }
 
-    // TTL (Logic Split Tempat & Tanggal)
+    // TTL
     if (lines[nikIndex + 2]) {
         let rawTTL = lines[nikIndex + 2].replace('Tempat/Tgl Lahir', '').replace(/[:]/g, '').trim();
-        
-        // Cek apakah ada koma (Pemisah standar)
         if (rawTTL.includes(',')) {
             const parts = rawTTL.split(',');
-            data.tempatLahir = parts[0].trim(); // Ambil bagian depan (Tempat)
-            
-            // Ambil bagian belakang (Tanggal) dan format ke YYYY-MM-DD
-            if (parts[1]) {
-                data.tanggalLahir = formatDateForInput(parts[1]);
-            }
+            data.tempatLahir = parts[0].trim();
+            if (parts[1]) data.tanggalLahir = formatDateForInput(parts[1]);
         } else {
-            // Jika tidak ada koma, masukkan semua ke Tempat Lahir dulu (User edit manual)
             data.tempatLahir = rawTTL; 
         }
     }
@@ -159,7 +136,7 @@ function parseKTPData(fullText: string) {
     }
   }
 
-  // --- TAHAP 3: Logic Relatif RT/RW ---
+  // TAHAP 3: Logic Relatif RT/RW (Cari Kelurahan)
   if (rtRwIndex !== -1 && !data.kelDesa) {
       const potentialKelurahan = lines[rtRwIndex + 1];
       if (potentialKelurahan) {
@@ -179,6 +156,11 @@ function parseKTPData(fullText: string) {
 
 export async function POST(req: Request) {
   try {
+    // --- PERBAIKAN: Client diinisialisasi DI DALAM fungsi ---
+    const client = new ImageAnnotatorClient({
+      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
+    });
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });

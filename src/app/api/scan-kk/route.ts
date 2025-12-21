@@ -1,18 +1,8 @@
 // src/app/api/scan-kk/route.ts
 import { NextResponse } from 'next/server';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
-import path from 'path';
 
-// const keyPath = path.join(process.cwd(), 'kunci_google.json');
-
-// const client = new ImageAnnotatorClient({
-//   keyFilename: keyPath,
-// });
-
-const client = new ImageAnnotatorClient({
-  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
-});
-
+// --- HELPER FUNCTION (Aman ditaruh di luar) ---
 function parseKKData(fullText: string) {
   const lines = fullText.split('\n');
   
@@ -35,7 +25,6 @@ function parseKKData(fullText: string) {
       noKK = noKKMatch[1];
       foundNiks.add(noKK);
   } else {
-      // Fallback: cari angka 16 digit yang berdiri sendiri di baris awal
       for (let i = 0; i < 10; i++) {
           const match = lines[i]?.match(/^\d{16}$/);
           if (match) {
@@ -46,14 +35,13 @@ function parseKKData(fullText: string) {
       }
   }
 
-  // --- 2. LOGIC HEADER VERTIKAL (Mencari value berawalan titik dua ":") ---
+  // --- 2. LOGIC HEADER VERTIKAL ---
   const colonLines = lines
     .map(l => l.trim())
     .filter(l => l.startsWith(':'))
-    .map(l => l.substring(1).trim()); // Hapus ":" di depan
+    .map(l => l.substring(1).trim());
 
   colonLines.forEach(val => {
-      // Logic tebak-tebakan isi berdasarkan format text
       if (val.match(/^\d{3}\s*\/\s*\d{3}$/)) {
           if (!rtrw) rtrw = val;
       } 
@@ -70,16 +58,10 @@ function parseKKData(fullText: string) {
           if (!provinsi) provinsi = val;
       }
       else if (val.length > 2) {
-          // Sisanya (Nama Kepala, Desa, Kecamatan) agak tricky dibedakan
-          // Kita pakai urutan kemunculan atau logika eliminasi
-          
           if (!namaKepalaKeluarga && !val.match(/\d/) && val === val.toUpperCase()) {
-             // Biasanya nama kepala keluarga muncul paling awal di daftar ":"
              namaKepalaKeluarga = val;
           }
           else if (!kelDesa && val.toUpperCase().includes('DESA') || !kelDesa) { 
-             // Asumsi setelah RT/RW biasanya Kelurahan atau Kecamatan
-             // Kita simpan dulu, nanti user bisa koreksi
              if (!namaKepalaKeluarga.includes(val)) {
                  if (!kelDesa) kelDesa = val;
                  else if (!kecamatan) kecamatan = val;
@@ -88,11 +70,10 @@ function parseKKData(fullText: string) {
       }
   });
 
-  // Fallback Spesifik untuk Label yang terbaca jelas
+  // Fallback Spesifik
   lines.forEach((line, i) => {
       const upper = line.toUpperCase();
       if (!kecamatan && upper.includes('KECAMATAN') && !upper.includes(':')) {
-           // Cek baris bawahnya
            if (lines[i+1] && lines[i+1].startsWith(':')) kecamatan = lines[i+1].substring(1).trim();
       }
       if (!kabupatenKota && (upper.includes('KABUPATEN') || upper.includes('KOTA')) && !upper.includes(':')) {
@@ -104,14 +85,10 @@ function parseKKData(fullText: string) {
   });
 
 
-  // --- 3. PARSING TABEL ANGGOTA (Multi-line Support) ---
+  // --- 3. PARSING TABEL ANGGOTA ---
   lines.forEach((line, index) => {
-    // Cari NIK (16 Digit)
     const nikMatch = line.match(/\d{16}/);
-    
-    // Cek apakah ini NIP/NIR (biasanya 18 digit atau lebih, misal NIR.1960...)
-    // Kita cek apakah ada angka lagi setelah 16 digit itu
-    const isLongNum = line.match(/\d{17,}/);
+    const isLongNum = line.match(/\d{17,}/); // Filter NIP/NIR
     
     if (nikMatch && !isLongNum) {
       const detectedNik = nikMatch[0];
@@ -121,28 +98,21 @@ function parseKKData(fullText: string) {
         
         let extractedName = '';
 
-        // SKENARIO A: Nama ada di baris yang SAMA (di sebelah kiri NIK)
-        // Contoh: "1 DONI HARDIAWAN 3273..."
+        // Skenario A: Nama di baris yang sama
         const parts = line.split(detectedNik);
         if (parts[0] && parts[0].trim().length > 2) {
             extractedName = parts[0].trim();
         } 
-        
-        // SKENARIO B: Nama ada di baris SEBELUMNYA (Header baris putus)
-        // Contoh Baris 1: "2 RINA PUSPASARI"
-        // Contoh Baris 2: "327316... PEREMPUAN"
+        // Skenario B: Nama di baris sebelumnya
         else if (index > 0) {
             const prevLine = lines[index - 1].trim();
-            // Validasi: Baris nama biasanya diawali Nomor Urut (1, 2, 3..)
             if (prevLine.match(/^\d+\s+[A-Z]/)) {
                 extractedName = prevLine;
             }
         }
 
         if (extractedName) {
-            // Bersihkan Nomor Urut di depan (1, 2, 3...)
             let cleanName = extractedName.replace(/^\d{1,2}\s+/, '').trim();
-            // Bersihkan karakter aneh
             cleanName = cleanName.replace(/[^a-zA-Z\s\.\,\']/g, '').trim();
 
             if (cleanName.length > 2 && !cleanName.includes('KEPALA KELUARGA')) {
@@ -157,21 +127,19 @@ function parseKKData(fullText: string) {
   });
 
   return { 
-    noKK, 
-    namaKepalaKeluarga, 
-    alamat,
-    rtrw,
-    kodePos,
-    kelDesa,
-    kecamatan,
-    kabupatenKota, // New Field
-    provinsi,      // New Field
+    noKK, namaKepalaKeluarga, alamat, rtrw, kodePos, 
+    kelDesa, kecamatan, kabupatenKota, provinsi, 
     anggotaKeluarga 
   };
 }
 
 export async function POST(req: Request) {
   try {
+    // --- PERBAIKAN: Client diinisialisasi DI DALAM fungsi ---
+    const client = new ImageAnnotatorClient({
+      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
+    });
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
 
@@ -189,14 +157,8 @@ export async function POST(req: Request) {
 
     const fullText = detections[0].description || '';
     
-    // Debugging
-    console.log('=== RAW KK ===');
-    console.log(JSON.stringify(fullText));
-
+    // Proses Parsing
     const extractedData = parseKKData(fullText);
-    
-    console.log('=== RESULT KK ===');
-    console.log(extractedData);
 
     return NextResponse.json({
       message: 'Success',

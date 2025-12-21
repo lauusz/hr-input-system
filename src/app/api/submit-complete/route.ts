@@ -1,36 +1,17 @@
 // src/app/api/submit-complete/route.ts
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { Storage } from '@google-cloud/storage'; // Library Baru
-import path from 'path';
-
-// --- KONFIGURASI ---
-// const keyPath = path.join(process.cwd(), 'kunci_google.json');
-
-const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'document-upload-2025';
-
-// 1. Setup Client Google Sheets
-// const auth = new google.auth.GoogleAuth({
-//   keyFilename: keyPath,
-//   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-// });
-
-const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
-
-// 2. Setup Client Google Cloud Storage
-// const storage = new Storage({
-//   keyFilename: keyPath,
-// });
-
-const storage = new Storage({
-  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
-});
+import { Storage } from '@google-cloud/storage';
 
 // --- FUNGSI UPLOAD KE GCS (PENGGANTI DRIVE) ---
 async function uploadToGCS(file: File, filename: string): Promise<string> {
+  // 1. INISIALISASI STORAGE DI DALAM FUNGSI (Agar aman saat Build)
+  const storage = new Storage({
+    credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
+  });
+
+  const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'hr-uploads-niko-2025';
+
   const buffer = Buffer.from(await file.arrayBuffer());
   const bucket = storage.bucket(BUCKET_NAME);
   const fileGCS = bucket.file(filename);
@@ -51,6 +32,12 @@ async function uploadToGCS(file: File, filename: string): Promise<string> {
 
 export async function POST(req: Request) {
   try {
+    // 2. INISIALISASI GOOGLE AUTH DI DALAM FUNGSI (Agar aman saat Build)
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS as string),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
     const formData = await req.formData();
     
     const fileKTP = formData.get('fileKTP') as File;
@@ -67,7 +54,6 @@ export async function POST(req: Request) {
     console.log('[API] Memulai proses untuk NIK:', ktp.nik);
 
     // 1. Upload ke Google Cloud Storage (GCS)
-    // Nama file kita buat unik: NIK_timestamp.jpg
     const timestamp = Date.now();
     const filenameKTP = `KTP_${ktp.nik}_${timestamp}.jpg`;
     const filenameKK = `KK_${kk.noKK}_${timestamp}.jpg`;
@@ -79,7 +65,7 @@ export async function POST(req: Request) {
 
     console.log('[GCS] Upload Berhasil:', { linkKTP, linkKK });
 
-    // 2. Simpan ke Google Spreadsheet
+    // 2. Simpan ke Google Spreadsheet (25 Kolom)
     const anggotaJson = JSON.stringify(kk.anggotaKeluarga);
 
     const values = [
