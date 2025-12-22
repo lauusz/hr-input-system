@@ -1,6 +1,7 @@
 // src/app/api/scan-ktp/route.ts
 import { NextResponse } from 'next/server';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
+// import path from 'path'; // Tambahkan import path
 
 // --- HELPER FUNCTIONS (Aman ditaruh di luar) ---
 
@@ -160,6 +161,13 @@ export async function POST(req: Request) {
     const client = new ImageAnnotatorClient({
       credentials: JSON.parse((process.env.GOOGLE_CREDENTIALS as string).replace(/\\n/g, '\n')),
     });
+
+    // const keyPath = path.join(process.cwd(), 'kunci_google.json');
+
+    // // Inisialisasi menggunakan keyFilename (jalur file fisik)
+    // const client = new ImageAnnotatorClient({
+    //   keyFilename: keyPath,
+    // });
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
