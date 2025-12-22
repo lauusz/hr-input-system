@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
-// import path from 'path'; // Tambahkan import path
 
 type Anggota = {
   nik: string;
@@ -16,6 +15,29 @@ type Anggota = {
   ayah?: string;
   ibu?: string;
 };
+
+function getGoogleCredentials() {
+  const raw = process.env.GOOGLE_CREDENTIALS;
+
+  if (!raw) {
+    throw new Error('GOOGLE_CREDENTIALS env is missing');
+  }
+
+  let parsed: any;
+
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const escaped = raw.replace(/\r?\n/g, '\\n');
+    parsed = JSON.parse(escaped);
+  }
+
+  if (parsed?.private_key) {
+    parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+  }
+
+  return parsed;
+}
 
 function normalizeSpaces(s: string) {
   return s.replace(/\s+/g, ' ').trim();
@@ -55,12 +77,9 @@ function extractPlaceBeforeDate(block: string, dateStr: string) {
   if (idx <= 0) return '';
   const left = block.slice(0, idx).trim();
   const parts = left.split(/\s{2,}|\s\|\s/).map(p => normalizeSpaces(p)).filter(Boolean);
-  if (parts.length === 0) return '';
-  const last = parts[parts.length - 1];
-  const c = cleanNameLike(last);
-  if (!c) return '';
-  if (c.length < 2) return '';
-  return c.toUpperCase();
+  if (!parts.length) return '';
+  const c = cleanNameLike(parts[parts.length - 1]);
+  return c.length >= 2 ? c.toUpperCase() : '';
 }
 
 function stripKnownTokens(blockUpper: string, tokenUpper: string) {
@@ -82,26 +101,15 @@ function extractParents(block: string, nama: string) {
   x = x.replace(/\b(TIDAK\/BELUM SEKOLAH|BELUM TAMAT SD\/SEDERAJAT|TAMAT SD\/SEDERAJAT|SLTP\/SEDERAJAT|SLTA\/SEDERAJAT|DIPLOMA I\/II|DIPLOMA III|DIPLOMA IV\/S1|S1|S2|S3)\b/g, ' ');
   x = x.replace(/\s+/g, ' ').trim();
 
-  const chunks = x.split(/\s{2,}|\s\|\s/).map(p => normalizeSpaces(p)).filter(Boolean);
-  const tail = chunks.length ? chunks[chunks.length - 1] : '';
-  const words = tail.split(' ').filter(Boolean);
+  const words = x.split(' ').filter(Boolean);
+  if (words.length < 2) return { ayah: '', ibu: '' };
 
-  const stop = new Set([
-    'WNI', 'WNA', 'KOTA', 'KABUPATEN', 'PROVINSI', 'KECAMATAN', 'DESA', 'KEL', 'RW', 'RT',
-  ]);
-
-  const filtered = words.filter(w => w.length > 1 && !stop.has(w));
-  if (filtered.length < 2) return { ayah: '', ibu: '' };
-
-  const ibu = filtered.slice(-3).join(' ').trim();
-  const ayah = filtered.slice(0, Math.max(1, filtered.length - 3)).join(' ').trim();
-
-  const ayahClean = cleanNameLike(ayah).toUpperCase();
-  const ibuClean = cleanNameLike(ibu).toUpperCase();
+  const ibu = words.slice(-3).join(' ');
+  const ayah = words.slice(0, Math.max(1, words.length - 3)).join(' ');
 
   return {
-    ayah: ayahClean.length >= 3 ? ayahClean : '',
-    ibu: ibuClean.length >= 3 ? ibuClean : '',
+    ayah: cleanNameLike(ayah).toUpperCase() || '',
+    ibu: cleanNameLike(ibu).toUpperCase() || '',
   };
 }
 
@@ -110,78 +118,28 @@ function parseMemberBlock(block: string, nik: string, nama: string): Anggota {
   const blockUpper = blockNorm.toUpperCase();
 
   const jenisKelamin = extractGender(blockUpper);
-
-  const agama = pickFromSet(blockUpper, [
-    'ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU',
-  ]);
-
+  const agama = pickFromSet(blockUpper, ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU']);
   const pendidikan = pickFromSet(blockUpper, [
-    'TIDAK/BELUM SEKOLAH',
-    'BELUM TAMAT SD/SEDERAJAT',
-    'TAMAT SD/SEDERAJAT',
-    'SLTP/SEDERAJAT',
-    'SLTA/SEDERAJAT',
-    'DIPLOMA I/II',
-    'DIPLOMA III',
-    'DIPLOMA IV/S1',
-    'S1',
-    'S2',
-    'S3',
+    'TIDAK/BELUM SEKOLAH', 'BELUM TAMAT SD/SEDERAJAT', 'TAMAT SD/SEDERAJAT',
+    'SLTP/SEDERAJAT', 'SLTA/SEDERAJAT', 'DIPLOMA I/II', 'DIPLOMA III',
+    'DIPLOMA IV/S1', 'S1', 'S2', 'S3'
   ]);
-
-  const statusPerkawinan = pickFromSet(blockUpper, [
-    'BELUM KAWIN',
-    'KAWIN',
-    'CERAI HIDUP',
-    'CERAI MATI',
-  ]);
-
+  const statusPerkawinan = pickFromSet(blockUpper, ['BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', 'CERAI MATI']);
   const statusHubunganKeluarga = pickFromSet(blockUpper, [
-    'KEPALA KELUARGA',
-    'SUAMI',
-    'ISTRI',
-    'ANAK',
-    'MENANTU',
-    'CUCU',
-    'ORANG TUA',
-    'MERTUA',
-    'FAMILI LAIN',
-    'SAUDARA',
-    'KEPONAKAN',
+    'KEPALA KELUARGA', 'SUAMI', 'ISTRI', 'ANAK', 'MENANTU', 'CUCU',
+    'ORANG TUA', 'MERTUA', 'FAMILI LAIN', 'SAUDARA', 'KEPONAKAN'
   ]);
 
   const tanggalLahir = extractDate(blockNorm);
-  const tempatLahir = extractPlaceBeforeDate(blockNorm.toUpperCase(), tanggalLahir);
+  const tempatLahir = extractPlaceBeforeDate(blockUpper, tanggalLahir);
 
-  let jenisPekerjaan = '';
-  const afterNik = blockNorm.includes(nik) ? blockNorm.split(nik).slice(1).join(' ') : blockNorm;
-  const afterNikUpper = afterNik.toUpperCase();
+  let tmp = blockUpper;
+  [nik, nama, jenisKelamin, agama, pendidikan, statusPerkawinan, statusHubunganKeluarga, tanggalLahir, tempatLahir]
+    .filter(Boolean)
+    .forEach(t => tmp = stripKnownTokens(tmp, String(t)));
 
-  const knownTokensToStrip = [
-    nik,
-    nama,
-    jenisKelamin,
-    agama,
-    pendidikan,
-    statusPerkawinan,
-    statusHubunganKeluarga,
-    tanggalLahir,
-    tempatLahir,
-  ].filter(Boolean);
-
-  let tmp = afterNikUpper;
-  for (const t of knownTokensToStrip) {
-    tmp = stripKnownTokens(tmp, t.toUpperCase());
-  }
-
-  tmp = tmp.replace(/\bWNI\b|\bWNA\b/g, ' ').replace(/\s+/g, ' ').trim();
-  const pieces = tmp.split(/\s{2,}|\s\|\s/).map(p => normalizeSpaces(p)).filter(Boolean);
-
-  if (pieces.length) {
-    const cand = pieces[0];
-    const candClean = cleanNameLike(cand).toUpperCase();
-    if (candClean.length >= 3) jenisPekerjaan = candClean;
-  }
+  tmp = tmp.replace(/\bWNI\b|\bWNA\b/g, ' ').trim();
+  const pekerjaan = cleanNameLike(tmp.split(/\s{2,}|\s\|\s/)[0] || '').toUpperCase();
 
   const parents = extractParents(blockNorm, nama);
 
@@ -193,7 +151,7 @@ function parseMemberBlock(block: string, nik: string, nama: string): Anggota {
     tanggalLahir: tanggalLahir || undefined,
     agama: agama || undefined,
     pendidikan: pendidikan || undefined,
-    jenisPekerjaan: jenisPekerjaan || undefined,
+    jenisPekerjaan: pekerjaan || undefined,
     statusPerkawinan: statusPerkawinan || undefined,
     statusHubunganKeluarga: statusHubunganKeluarga || undefined,
     ayah: parents.ayah || undefined,
@@ -221,128 +179,30 @@ function parseKKData(fullText: string) {
   if (noKKMatch) {
     noKK = noKKMatch[1];
     foundNiks.add(noKK);
-  } else {
-    for (let i = 0; i < 10; i++) {
-      const match = lines[i]?.match(/^\d{16}$/);
-      if (match) {
-        noKK = match[0];
-        foundNiks.add(noKK);
-        break;
-      }
-    }
   }
-
-  const colonLines = lines
-    .map(l => l.trim())
-    .filter(l => l.startsWith(':'))
-    .map(l => l.substring(1).trim());
-
-  colonLines.forEach(val => {
-    const v = val.trim();
-    const up = v.toUpperCase();
-
-    if (v.match(/^\d{3}\s*\/\s*\d{3}$/)) {
-      if (!rtrw) rtrw = v;
-      return;
-    }
-
-    if (v.match(/^\d{5}$/)) {
-      if (!kodePos) kodePos = v;
-      return;
-    }
-
-    if (up.includes('JL') || up.includes('JALAN') || up.includes('BLOK')) {
-      if (!alamat) alamat = v;
-      return;
-    }
-
-    if (up.includes('KABUPATEN') || up.includes('KOTA ')) {
-      if (!kabupatenKota) kabupatenKota = v;
-      return;
-    }
-
-    if (['JAWA', 'SUMATERA', 'KALIMANTAN', 'SULAWESI', 'PAPUA', 'BALI', 'NUSA', 'DKI', 'DI '].some(k => up.includes(k))) {
-      if (!provinsi) provinsi = v;
-      return;
-    }
-
-    if (v.length > 2) {
-      if (!namaKepalaKeluarga && !v.match(/\d/) && v === v.toUpperCase()) {
-        namaKepalaKeluarga = v;
-        return;
-      }
-
-      const shouldKel = (!kelDesa && up.includes('DESA')) || !kelDesa;
-      if (shouldKel) {
-        if (!namaKepalaKeluarga.includes(v)) {
-          if (!kelDesa) kelDesa = v;
-          else if (!kecamatan) kecamatan = v;
-        }
-      }
-    }
-  });
-
-  lines.forEach((line, i) => {
-    const upper = line.toUpperCase();
-    if (!kecamatan && upper.includes('KECAMATAN') && !upper.includes(':')) {
-      if (lines[i + 1] && lines[i + 1].startsWith(':')) kecamatan = lines[i + 1].substring(1).trim();
-    }
-    if (!kabupatenKota && (upper.includes('KABUPATEN') || upper.includes('KOTA')) && !upper.includes(':')) {
-      if (lines[i + 1] && lines[i + 1].startsWith(':')) kabupatenKota = lines[i + 1].substring(1).trim();
-    }
-    if (!provinsi && upper.includes('PROVINSI') && !upper.includes(':')) {
-      if (lines[i + 1] && lines[i + 1].startsWith(':')) provinsi = lines[i + 1].substring(1).trim();
-    }
-  });
 
   const nikIndexes: { idx: number; nik: string }[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] ?? '';
-    const nikMatch = line.match(/\b\d{16}\b/);
-    const isLongNum = line.match(/\d{17,}/);
-    if (nikMatch && !isLongNum) {
-      const nik = nikMatch[0];
-      if (!foundNiks.has(nik)) {
-        nikIndexes.push({ idx: i, nik });
-        foundNiks.add(nik);
-      }
+
+  lines.forEach((line, i) => {
+    const m = line.match(/\b\d{16}\b/);
+    if (m && !foundNiks.has(m[0])) {
+      foundNiks.add(m[0]);
+      nikIndexes.push({ idx: i, nik: m[0] });
     }
-  }
+  });
 
-  for (let k = 0; k < nikIndexes.length; k++) {
-    const startIdx = nikIndexes[k].idx;
-    const nik = nikIndexes[k].nik;
-    const endIdx = k + 1 < nikIndexes.length ? nikIndexes[k + 1].idx : Math.min(lines.length, startIdx + 10);
+  for (let i = 0; i < nikIndexes.length; i++) {
+    const { idx, nik } = nikIndexes[i];
+    const end = i + 1 < nikIndexes.length ? nikIndexes[i + 1].idx : idx + 10;
 
-    let extractedName = '';
-    const line = lines[startIdx] ?? '';
+    let name = '';
+    const parts = lines[idx].split(nik);
+    if (parts[0]?.trim()) name = cleanNameLike(parts[0]).toUpperCase();
+    if (!name && idx > 0) name = cleanNameLike(lines[idx - 1]).toUpperCase();
+    if (!name) continue;
 
-    const parts = line.split(nik);
-    if (parts[0] && parts[0].trim().length > 2) {
-      extractedName = parts[0].trim();
-    } else if (startIdx > 0) {
-      const prevLine = (lines[startIdx - 1] ?? '').trim();
-      if (prevLine.match(/^\d+\s+[A-Z]/)) extractedName = prevLine;
-    }
-
-    if (!extractedName) continue;
-
-    let cleanNama = extractedName.replace(/^\d{1,2}\s+/, '').trim();
-    cleanNama = cleanNama.replace(/[^a-zA-Z\s\.\,\']/g, '').trim();
-    if (cleanNama.length <= 2) continue;
-    if (cleanNama.toUpperCase().includes('KEPALA KELUARGA')) continue;
-
-    const blockLines = [];
-    for (let i = startIdx - 1; i <= endIdx; i++) {
-      if (i >= 0 && i < lines.length) {
-        const t = normalizeSpaces(lines[i] ?? '');
-        if (t) blockLines.push(t);
-      }
-    }
-    const block = blockLines.join(' | ');
-
-    const anggota = parseMemberBlock(block, nik, cleanNama.toUpperCase());
-    anggotaKeluarga.push(anggota);
+    const block = lines.slice(Math.max(0, idx - 1), end).join(' | ');
+    anggotaKeluarga.push(parseMemberBlock(block, nik, name));
   }
 
   return {
@@ -361,36 +221,24 @@ function parseKKData(fullText: string) {
 
 export async function POST(req: Request) {
   try {
-    const client = new ImageAnnotatorClient({
-      credentials: JSON.parse((process.env.GOOGLE_CREDENTIALS as string).replace(/\\n/g, '\n')),
-    });
-
-    // const keyPath = path.join(process.cwd(), 'kunci_google.json');
-
-    // // Inisialisasi client menggunakan keyFilename (jalur file fisik)
-    // const client = new ImageAnnotatorClient({
-    //   keyFilename: keyPath,
-    // });
+    const credentials = getGoogleCredentials();
+    const client = new ImageAnnotatorClient({ credentials });
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
-
     if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
+    const buffer = Buffer.from(await file.arrayBuffer());
     const [result] = await client.textDetection(buffer);
-    const detections = result.textAnnotations;
 
-    if (!detections || detections.length === 0) {
+    if (!result.textAnnotations || result.textAnnotations.length === 0) {
       return NextResponse.json({ error: 'No text detected' }, { status: 400 });
     }
 
-    const fullText = detections[0].description || '';
+    const fullText = result.textAnnotations[0].description || '';
     const extractedData = parseKKData(fullText);
 
-    return NextResponse.json({ message: 'Success', data: extractedData }, { status: 200 });
+    return NextResponse.json({ message: 'Success', data: extractedData });
   } catch (error: any) {
     console.error('SERVER ERROR:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

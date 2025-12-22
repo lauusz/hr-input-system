@@ -18,6 +18,29 @@ type AnggotaKk = {
   _open?: boolean;
 };
 
+function getGoogleCredentials() {
+  const raw = process.env.GOOGLE_CREDENTIALS;
+
+  if (!raw) {
+    throw new Error('GOOGLE_CREDENTIALS env is missing');
+  }
+
+  let parsed: any;
+
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const escaped = raw.replace(/\r?\n/g, '\\n');
+    parsed = JSON.parse(escaped);
+  }
+
+  if (parsed?.private_key) {
+    parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+  }
+
+  return parsed;
+}
+
 function s(v: any) {
   return typeof v === 'string' ? v.trim() : '';
 }
@@ -39,10 +62,8 @@ function normalizeAnggota(raw: any): AnggotaKk {
   };
 }
 
-async function uploadToGCS(file: File, filename: string): Promise<string> {
-  const storage = new Storage({
-    credentials: JSON.parse((process.env.GOOGLE_CREDENTIALS as string).replace(/\\n/g, '\n')),
-  });
+async function uploadToGCS(file: File, filename: string, credentials: any): Promise<string> {
+  const storage = new Storage({ credentials });
 
   const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'hr-uploads-niko-2025';
 
@@ -61,8 +82,10 @@ async function uploadToGCS(file: File, filename: string): Promise<string> {
 
 export async function POST(req: Request) {
   try {
+    const credentials = getGoogleCredentials();
+
     const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse((process.env.GOOGLE_CREDENTIALS as string).replace(/\\n/g, '\n')),
+      credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
@@ -86,8 +109,8 @@ export async function POST(req: Request) {
     const filenameKK = `KK_${kk.noKK}_${timestamp}.jpg`;
 
     const [linkKTP, linkKK] = await Promise.all([
-      uploadToGCS(fileKTP, filenameKTP),
-      uploadToGCS(fileKK, filenameKK),
+      uploadToGCS(fileKTP, filenameKTP, credentials),
+      uploadToGCS(fileKK, filenameKK, credentials),
     ]);
 
     console.log('[GCS] Upload Berhasil:', { linkKTP, linkKK });
