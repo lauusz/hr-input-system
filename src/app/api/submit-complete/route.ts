@@ -2,16 +2,6 @@ import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { Storage } from '@google-cloud/storage';
 
-type AnggotaKk = {
-  nik: string;
-  nama: string;
-  jenisKelamin?: string;
-  tempatLahir?: string;
-  tanggalLahir?: string;
-  agama?: string;
-  statusHubunganKeluarga?: string;
-};
-
 function getGoogleCredentials() {
   const raw = process.env.GOOGLE_CREDENTIALS;
 
@@ -33,46 +23,6 @@ function getGoogleCredentials() {
   }
 
   return parsed;
-}
-
-function s(v: any) {
-  return typeof v === 'string' ? v.trim() : '';
-}
-
-function normalizeAnggota(raw: any): AnggotaKk {
-  return {
-    nik: s(raw?.nik),
-    nama: s(raw?.nama),
-    jenisKelamin: s(raw?.jenisKelamin) || undefined,
-    tempatLahir: s(raw?.tempatLahir) || undefined,
-    tanggalLahir: s(raw?.tanggalLahir) || undefined,
-    agama: s(raw?.agama) || undefined,
-    statusHubunganKeluarga: s(raw?.statusHubunganKeluarga) || undefined,
-  };
-}
-
-function csvEscapeCell(v: string) {
-  const x = (v ?? '').replace(/\r?\n/g, ' ').trim();
-  return x.replace(/;/g, ' ').replace(/\s+/g, ' ');
-}
-
-function anggotaToCsv(anggota: AnggotaKk[]) {
-  const header = 'NIK;NAMA;JENIS_KELAMIN;TEMPAT_LAHIR;TANGGAL_LAHIR;AGAMA;STATUS_HUBUNGAN';
-
-  const rows = anggota.map(a => {
-    const cols = [
-      csvEscapeCell(a.nik),
-      csvEscapeCell(a.nama),
-      csvEscapeCell(a.jenisKelamin || ''),
-      csvEscapeCell(a.tempatLahir || ''),
-      csvEscapeCell(a.tanggalLahir || ''),
-      csvEscapeCell(a.agama || ''),
-      csvEscapeCell(a.statusHubunganKeluarga || ''),
-    ];
-    return cols.join(';');
-  });
-
-  return [header, ...rows].join('\n');
 }
 
 async function uploadToGCS(file: File, filename: string, credentials: any): Promise<string> {
@@ -132,13 +82,6 @@ export async function POST(req: Request) {
 
     console.log('[GCS] Upload Berhasil:', { linkKTP, linkKK });
 
-    const rawMembers = Array.isArray(kk?.anggotaKeluarga) ? kk.anggotaKeluarga : [];
-    const anggotaClean: AnggotaKk[] = rawMembers
-      .map((m: any) => normalizeAnggota(m))
-      .filter((m: AnggotaKk) => m.nik || m.nama);
-
-    const anggotaCsv = anggotaToCsv(anggotaClean);
-
     const values = [
       [
         new Date().toLocaleString('id-ID'),
@@ -161,7 +104,6 @@ export async function POST(req: Request) {
 
         linkKTP,
         linkKK,
-        anggotaCsv,
       ],
     ];
 
@@ -169,7 +111,7 @@ export async function POST(req: Request) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:R',
+      range: 'Sheet1!A:Q',
       valueInputOption: 'USER_ENTERED',
       requestBody: { values },
     });
