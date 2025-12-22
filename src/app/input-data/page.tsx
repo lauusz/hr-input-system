@@ -52,6 +52,10 @@ function safeStr(v: any) {
   return typeof v === 'string' ? v : '';
 }
 
+function isFilled(v: any) {
+  return typeof v === 'string' && v.trim().length > 0;
+}
+
 export default function InputDataPage() {
   const router = useRouter();
 
@@ -69,14 +73,31 @@ export default function InputDataPage() {
   const [previewKK, setPreviewKK] = useState<string | null>(null);
 
   const [ktpData, setKtpData] = useState<KTPData>({
-    nik: '', nama: '', tempatLahir: '', tanggalLahir: '', jenisKelamin: '',
-    alamat: '', rtRw: '', kelDesa: '', kecamatan: '', agama: '',
-    statusPerkawinan: '', pekerjaan: '', kewarganegaraan: ''
+    nik: '',
+    nama: '',
+    tempatLahir: '',
+    tanggalLahir: '',
+    jenisKelamin: '',
+    alamat: '',
+    rtRw: '',
+    kelDesa: '',
+    kecamatan: '',
+    agama: '',
+    statusPerkawinan: '',
+    pekerjaan: '',
+    kewarganegaraan: '',
   });
 
   const [kkHeader, setKkHeader] = useState<KKHeader>({
-    noKK: '', namaKepalaKeluarga: '', alamat: '', rtrw: '', kodePos: '',
-    kelDesa: '', kecamatan: '', kabupatenKota: '', provinsi: ''
+    noKK: '',
+    namaKepalaKeluarga: '',
+    alamat: '',
+    rtrw: '',
+    kodePos: '',
+    kelDesa: '',
+    kecamatan: '',
+    kabupatenKota: '',
+    provinsi: '',
   });
 
   const [anggotaList, setAnggotaList] = useState<Anggota[]>([]);
@@ -105,7 +126,7 @@ export default function InputDataPage() {
       } else {
         alert('Gagal Scan KTP: ' + json.error);
       }
-    } catch (e) {
+    } catch {
       alert('Terjadi kesalahan sistem saat scan KTP');
     } finally {
       setLoadingKTP(false);
@@ -140,7 +161,7 @@ export default function InputDataPage() {
           kelDesa: json.data.kelDesa || '',
           kecamatan: json.data.kecamatan || '',
           kabupatenKota: json.data.kabupatenKota || '',
-          provinsi: json.data.provinsi || ''
+          provinsi: json.data.provinsi || '',
         });
 
         const rawMembers = Array.isArray(json.data.anggotaKeluarga) ? json.data.anggotaKeluarga : [];
@@ -165,7 +186,7 @@ export default function InputDataPage() {
       } else {
         alert('Gagal Scan KK: ' + json.error);
       }
-    } catch (e) {
+    } catch {
       alert('Terjadi kesalahan sistem saat scan KK');
     } finally {
       setLoadingKK(false);
@@ -210,10 +231,34 @@ export default function InputDataPage() {
   const removeMember = (idx: number) => setAnggotaList(anggotaList.filter((_, i) => i !== idx));
 
   const nextStep = () => {
-    if (!fileKTP || !ktpData.nik) {
-      alert('Harap selesaikan Scan KTP terlebih dahulu.');
+    const requiredKtpFields: (keyof KTPData)[] = [
+      'nik',
+      'nama',
+      'tempatLahir',
+      'tanggalLahir',
+      'jenisKelamin',
+      'alamat',
+      'rtRw',
+      'kelDesa',
+      'kecamatan',
+      'agama',
+      'statusPerkawinan',
+      'pekerjaan',
+      'kewarganegaraan',
+    ];
+
+    for (const key of requiredKtpFields) {
+      if (!isFilled(ktpData[key])) {
+        alert(`Field KTP "${key}" wajib diisi.`);
+        return;
+      }
+    }
+
+    if (!fileKTP) {
+      alert('File KTP wajib diupload.');
       return;
     }
+
     setStep(2);
     window.scrollTo(0, 0);
   };
@@ -228,11 +273,38 @@ export default function InputDataPage() {
       alert('File KTP dan KK harus diupload.');
       return;
     }
+
+    const requiredKkFields: (keyof KKHeader)[] = [
+      'noKK',
+      'namaKepalaKeluarga',
+      'alamat',
+      'rtrw',
+      'kelDesa',
+      'kecamatan',
+      'kabupatenKota',
+      'provinsi',
+    ];
+
+    for (const key of requiredKkFields) {
+      if (!isFilled(kkHeader[key])) {
+        alert(`Field KK "${key}" wajib diisi.`);
+        return;
+      }
+    }
+
+    for (let i = 0; i < anggotaList.length; i++) {
+      const a = anggotaList[i];
+      if (!isFilled(a.nik) || !isFilled(a.nama)) {
+        alert(`Anggota keluarga ke-${i + 1}: NIK dan Nama wajib diisi.`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     const payload = {
       ktp: ktpData,
-      kk: { ...kkHeader, anggotaKeluarga: anggotaList.map(({ _open, ...rest }) => rest) }
+      kk: { ...kkHeader, anggotaKeluarga: anggotaList.map(({ _open, ...rest }) => rest) },
     };
 
     const fd = new FormData();
@@ -250,7 +322,7 @@ export default function InputDataPage() {
         const json = await res.json();
         alert('Gagal Menyimpan: ' + json.error);
       }
-    } catch (e) {
+    } catch {
       alert('Error saat mengirim data ke server.');
     } finally {
       setIsSubmitting(false);
@@ -261,9 +333,21 @@ export default function InputDataPage() {
     <main className="min-h-screen p-6 bg-gray-100 flex flex-col items-center">
       <div className="w-full max-w-5xl bg-white p-8 rounded-xl shadow-xl">
         <div className="flex items-center justify-center mb-8">
-          <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold transition-all ${step === 1 ? 'bg-blue-600 text-white scale-110' : 'bg-green-500 text-white'}`}>1</div>
+          <div
+            className={`flex items-center justify-center w-10 h-10 rounded-full font-bold transition-all ${
+              step === 1 ? 'bg-blue-600 text-white scale-110' : 'bg-green-500 text-white'
+            }`}
+          >
+            1
+          </div>
           <div className={`w-24 h-1 transition-all ${step === 2 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-          <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold transition-all ${step === 2 ? 'bg-green-600 text-white scale-110' : 'bg-gray-300 text-gray-500'}`}>2</div>
+          <div
+            className={`flex items-center justify-center w-10 h-10 rounded-full font-bold transition-all ${
+              step === 2 ? 'bg-green-600 text-white scale-110' : 'bg-gray-300 text-gray-500'
+            }`}
+          >
+            2
+          </div>
         </div>
 
         <h1 className="text-3xl font-bold mb-8 text-center text-gray-800">
@@ -275,7 +359,13 @@ export default function InputDataPage() {
             <div className="flex flex-col md:flex-row gap-6 mb-8 items-start">
               <div className="flex-1 w-full bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-sm">
                 <label className="block font-semibold text-blue-900 mb-3">Upload Foto KTP</label>
-                <input type="file" accept="image/*" onChange={handleFileKTP} className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-white file:text-blue-700 file:border-0 hover:file:bg-blue-100 cursor-pointer" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileKTP}
+                  className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-white file:text-blue-700 file:border-0 hover:file:bg-blue-100 cursor-pointer"
+                  required
+                />
                 <button
                   onClick={scanKTP}
                   disabled={!fileKTP || loadingKTP}
@@ -293,46 +383,92 @@ export default function InputDataPage() {
 
             {showKtpForm && (
               <div className="animate-slide-up bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">📝 Hasil Scan KTP <span className="text-xs font-normal ml-2 text-gray-500">(Silakan koreksi jika ada yang salah)</span></h3>
+                <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">
+                  📝 Hasil Scan KTP <span className="text-xs font-normal ml-2 text-gray-500">(Silakan koreksi jika ada yang salah)</span>
+                </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                  <div className="col-span-2"><label className="lbl">NIK</label><input name="nik" value={ktpData.nik} onChange={changeKTP} className="inp font-bold tracking-wide" /></div>
-                  <div className="col-span-2"><label className="lbl">Nama Lengkap</label><input name="nama" value={ktpData.nama} onChange={changeKTP} className="inp" /></div>
+                  <div className="col-span-2">
+                    <label className="lbl">NIK</label>
+                    <input name="nik" value={ktpData.nik} onChange={changeKTP} className="inp font-bold tracking-wide" required />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="lbl">Nama Lengkap</label>
+                    <input name="nama" value={ktpData.nama} onChange={changeKTP} className="inp" required />
+                  </div>
 
-                  <div><label className="lbl">Tempat Lahir</label><input name="tempatLahir" value={ktpData.tempatLahir} onChange={changeKTP} className="inp" /></div>
-                  <div><label className="lbl">Tanggal Lahir</label><input type="date" name="tanggalLahir" value={ktpData.tanggalLahir} onChange={changeKTP} className="inp cursor-pointer" /></div>
+                  <div>
+                    <label className="lbl">Tempat Lahir</label>
+                    <input name="tempatLahir" value={ktpData.tempatLahir} onChange={changeKTP} className="inp" required />
+                  </div>
+                  <div>
+                    <label className="lbl">Tanggal Lahir</label>
+                    <input type="date" name="tanggalLahir" value={ktpData.tanggalLahir} onChange={changeKTP} className="inp cursor-pointer" required />
+                  </div>
 
                   <div>
                     <label className="lbl">Jenis Kelamin</label>
-                    <select name="jenisKelamin" value={ktpData.jenisKelamin} onChange={changeKTP} className="inp cursor-pointer">
-                      <option value="">-- Pilih --</option><option value="LAKI-LAKI">LAKI-LAKI</option><option value="PEREMPUAN">PEREMPUAN</option>
+                    <select name="jenisKelamin" value={ktpData.jenisKelamin} onChange={changeKTP} className="inp cursor-pointer" required>
+                      <option value="">-- Pilih --</option>
+                      <option value="LAKI-LAKI">LAKI-LAKI</option>
+                      <option value="PEREMPUAN">PEREMPUAN</option>
                     </select>
                   </div>
                   <div>
                     <label className="lbl">Agama</label>
-                    <select name="agama" value={ktpData.agama} onChange={changeKTP} className="inp cursor-pointer">
+                    <select name="agama" value={ktpData.agama} onChange={changeKTP} className="inp cursor-pointer" required>
                       <option value="">-- Pilih --</option>
-                      {['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'KEPERCAYAAN TERHADAP TUHAN YME'].map(a => <option key={a} value={a}>{a}</option>)}
+                      {['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'KEPERCAYAAN TERHADAP TUHAN YME'].map(a => (
+                        <option key={a} value={a}>
+                          {a}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="lbl">Status Perkawinan</label>
+                    <select name="statusPerkawinan" value={ktpData.statusPerkawinan} onChange={changeKTP} className="inp cursor-pointer" required>
+                      <option value="">-- Pilih --</option>
+                      {['BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', 'CERAI MATI'].map(s => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
-                    <label className="lbl">Status Perkawinan</label>
-                    <select name="statusPerkawinan" value={ktpData.statusPerkawinan} onChange={changeKTP} className="inp cursor-pointer">
-                      <option value="">-- Pilih --</option>
-                      {['BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', 'CERAI MATI'].map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <label className="lbl">Pekerjaan</label>
+                    <input name="pekerjaan" value={ktpData.pekerjaan} onChange={changeKTP} className="inp" required />
                   </div>
-                  <div><label className="lbl">Pekerjaan</label><input name="pekerjaan" value={ktpData.pekerjaan} onChange={changeKTP} className="inp" /></div>
 
-                  <div className="col-span-2 mt-2"><label className="lbl">Alamat (Sesuai KTP)</label><input name="alamat" value={ktpData.alamat} onChange={changeKTP} className="inp" /></div>
-                  <div><label className="lbl">RT/RW</label><input name="rtRw" value={ktpData.rtRw} onChange={changeKTP} className="inp" /></div>
-                  <div><label className="lbl">Kel/Desa</label><input name="kelDesa" value={ktpData.kelDesa} onChange={changeKTP} className="inp" /></div>
-                  <div><label className="lbl">Kecamatan</label><input name="kecamatan" value={ktpData.kecamatan} onChange={changeKTP} className="inp" /></div>
-                  <div><label className="lbl">Kewarganegaraan</label><input name="kewarganegaraan" value={ktpData.kewarganegaraan} onChange={changeKTP} className="inp" /></div>
+                  <div className="col-span-2 mt-2">
+                    <label className="lbl">Alamat (Sesuai KTP)</label>
+                    <input name="alamat" value={ktpData.alamat} onChange={changeKTP} className="inp" required />
+                  </div>
+                  <div>
+                    <label className="lbl">RT/RW</label>
+                    <input name="rtRw" value={ktpData.rtRw} onChange={changeKTP} className="inp" required />
+                  </div>
+                  <div>
+                    <label className="lbl">Kel/Desa</label>
+                    <input name="kelDesa" value={ktpData.kelDesa} onChange={changeKTP} className="inp" required />
+                  </div>
+                  <div>
+                    <label className="lbl">Kecamatan</label>
+                    <input name="kecamatan" value={ktpData.kecamatan} onChange={changeKTP} className="inp" required />
+                  </div>
+                  <div>
+                    <label className="lbl">Kewarganegaraan</label>
+                    <input name="kewarganegaraan" value={ktpData.kewarganegaraan} onChange={changeKTP} className="inp" required />
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-4 border-t">
-                  <button onClick={nextStep} className="bg-blue-700 text-white px-10 py-3 rounded-lg font-bold hover:bg-blue-800 transition shadow-lg w-full md:w-auto transform hover:-translate-y-1">
+                  <button
+                    onClick={nextStep}
+                    className="bg-blue-700 text-white px-10 py-3 rounded-lg font-bold hover:bg-blue-800 transition shadow-lg w-full md:w-auto transform hover:-translate-y-1"
+                  >
                     Lanjut ke Upload KK →
                   </button>
                 </div>
@@ -346,7 +482,13 @@ export default function InputDataPage() {
             <div className="flex flex-col md:flex-row gap-6 mb-8 items-start">
               <div className="flex-1 w-full bg-green-50 p-6 rounded-xl border border-green-100 shadow-sm">
                 <label className="block font-semibold text-green-900 mb-3">Upload Foto Kartu Keluarga</label>
-                <input type="file" accept="image/*" onChange={handleFileKK} className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-white file:text-green-700 file:border-0 hover:file:bg-green-100 cursor-pointer" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileKK}
+                  className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-white file:text-green-700 file:border-0 hover:file:bg-green-100 cursor-pointer"
+                  required
+                />
 
                 <button
                   onClick={scanKK}
@@ -356,6 +498,7 @@ export default function InputDataPage() {
                   {loadingKK ? '⏳ Sedang Memindai...' : '🔍 Scan KK Sekarang'}
                 </button>
               </div>
+
               {previewKK && (
                 <div className="w-full md:w-1/3 h-56 relative border rounded-lg bg-gray-200 shadow-inner overflow-hidden">
                   <Image src={previewKK} alt="Preview KK" fill style={{ objectFit: 'contain' }} />
@@ -368,23 +511,58 @@ export default function InputDataPage() {
                 <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">📝 Hasil Scan KK</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-                  <div className="col-span-2"><label className="lbl">No. Kartu Keluarga</label><input name="noKK" value={kkHeader.noKK} onChange={changeKKHead} className="inp font-bold text-lg tracking-wide" /></div>
-                  <div className="col-span-2"><label className="lbl">Nama Kepala Keluarga</label><input name="namaKepalaKeluarga" value={kkHeader.namaKepalaKeluarga} onChange={changeKKHead} className="inp" /></div>
+                  <div className="col-span-2">
+                    <label className="lbl">No. Kartu Keluarga</label>
+                    <input name="noKK" value={kkHeader.noKK} onChange={changeKKHead} className="inp font-bold text-lg tracking-wide" required />
+                  </div>
 
-                  <div className="col-span-2"><label className="lbl">Alamat KK</label><input name="alamat" value={kkHeader.alamat} onChange={changeKKHead} className="inp" /></div>
-                  <div><label className="lbl">RT/RW</label><input name="rtrw" value={kkHeader.rtrw} onChange={changeKKHead} className="inp" /></div>
-                  <div><label className="lbl">Kode Pos</label><input name="kodePos" value={kkHeader.kodePos} onChange={changeKKHead} className="inp" /></div>
+                  <div className="col-span-2">
+                    <label className="lbl">Nama Kepala Keluarga</label>
+                    <input name="namaKepalaKeluarga" value={kkHeader.namaKepalaKeluarga} onChange={changeKKHead} className="inp" required />
+                  </div>
 
-                  <div><label className="lbl">Desa/Kelurahan</label><input name="kelDesa" value={kkHeader.kelDesa} onChange={changeKKHead} className="inp" /></div>
-                  <div><label className="lbl">Kecamatan</label><input name="kecamatan" value={kkHeader.kecamatan} onChange={changeKKHead} className="inp" /></div>
-                  <div><label className="lbl">Kabupaten/Kota</label><input name="kabupatenKota" value={kkHeader.kabupatenKota} onChange={changeKKHead} className="inp" /></div>
-                  <div><label className="lbl">Provinsi</label><input name="provinsi" value={kkHeader.provinsi} onChange={changeKKHead} className="inp" /></div>
+                  <div className="col-span-2">
+                    <label className="lbl">Alamat KK</label>
+                    <input name="alamat" value={kkHeader.alamat} onChange={changeKKHead} className="inp" required />
+                  </div>
+
+                  <div>
+                    <label className="lbl">RT/RW</label>
+                    <input name="rtrw" value={kkHeader.rtrw} onChange={changeKKHead} className="inp" required />
+                  </div>
+
+                  <div>
+                    <label className="lbl">Kode Pos</label>
+                    <input name="kodePos" value={kkHeader.kodePos} onChange={changeKKHead} className="inp" />
+                  </div>
+
+                  <div>
+                    <label className="lbl">Desa/Kelurahan</label>
+                    <input name="kelDesa" value={kkHeader.kelDesa} onChange={changeKKHead} className="inp" required />
+                  </div>
+
+                  <div>
+                    <label className="lbl">Kecamatan</label>
+                    <input name="kecamatan" value={kkHeader.kecamatan} onChange={changeKKHead} className="inp" required />
+                  </div>
+
+                  <div>
+                    <label className="lbl">Kabupaten/Kota</label>
+                    <input name="kabupatenKota" value={kkHeader.kabupatenKota} onChange={changeKKHead} className="inp" required />
+                  </div>
+
+                  <div>
+                    <label className="lbl">Provinsi</label>
+                    <input name="provinsi" value={kkHeader.provinsi} onChange={changeKKHead} className="inp" required />
+                  </div>
                 </div>
 
                 <div className="bg-gray-50 p-5 rounded-lg mb-8 border border-gray-200">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="font-semibold text-gray-700">Daftar Anggota Keluarga</h3>
-                    <button onClick={addMember} className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full hover:bg-indigo-200 font-bold transition">+ Tambah Baris Manual</button>
+                    <button onClick={addMember} className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full hover:bg-indigo-200 font-bold transition">
+                      + Tambah Baris Manual
+                    </button>
                   </div>
 
                   {anggotaList.length > 0 ? (
@@ -392,21 +570,41 @@ export default function InputDataPage() {
                       <div key={i} className="mb-3">
                         <div className="flex gap-3 items-center">
                           <div className="flex-1">
-                            <input placeholder="NIK Anggota" value={m.nik} onChange={(e) => changeMember(i, 'nik', e.target.value)} className="inp text-sm py-2" />
+                            <input
+                              placeholder="NIK Anggota"
+                              value={m.nik}
+                              onChange={e => changeMember(i, 'nik', e.target.value)}
+                              className="inp text-sm py-2"
+                              required
+                            />
                           </div>
                           <div className="flex-[2]">
-                            <input placeholder="Nama Lengkap" value={m.nama} onChange={(e) => changeMember(i, 'nama', e.target.value)} className="inp text-sm py-2" />
+                            <input
+                              placeholder="Nama Lengkap"
+                              value={m.nama}
+                              onChange={e => changeMember(i, 'nama', e.target.value)}
+                              className="inp text-sm py-2"
+                              required
+                            />
                           </div>
 
                           <button
                             onClick={() => toggleMemberOpen(i)}
                             className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold px-3 py-2 rounded-md transition"
                             title="Detail"
+                            type="button"
                           >
                             {m._open ? '▴' : '▾'}
                           </button>
 
-                          <button onClick={() => removeMember(i)} className="bg-white border border-red-200 text-red-500 hover:bg-red-50 font-bold px-3 py-2 rounded-md transition" title="Hapus">✕</button>
+                          <button
+                            onClick={() => removeMember(i)}
+                            className="bg-white border border-red-200 text-red-500 hover:bg-red-50 font-bold px-3 py-2 rounded-md transition"
+                            title="Hapus"
+                            type="button"
+                          >
+                            ✕
+                          </button>
                         </div>
 
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -420,35 +618,40 @@ export default function InputDataPage() {
                           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 bg-white border border-gray-200 rounded-lg p-4">
                             <div>
                               <label className="lbl">Tempat Lahir</label>
-                              <input value={m.tempatLahir || ''} onChange={(e) => changeMember(i, 'tempatLahir', e.target.value)} className="inp text-sm py-2" />
+                              <input value={m.tempatLahir || ''} onChange={e => changeMember(i, 'tempatLahir', e.target.value)} className="inp text-sm py-2" />
                             </div>
                             <div>
                               <label className="lbl">Tanggal Lahir</label>
-                              <input value={m.tanggalLahir || ''} onChange={(e) => changeMember(i, 'tanggalLahir', e.target.value)} className="inp text-sm py-2" placeholder="DD/MM/YYYY" />
+                              <input
+                                value={m.tanggalLahir || ''}
+                                onChange={e => changeMember(i, 'tanggalLahir', e.target.value)}
+                                className="inp text-sm py-2"
+                                placeholder="DD/MM/YYYY"
+                              />
                             </div>
                             <div>
                               <label className="lbl">Pendidikan</label>
-                              <input value={m.pendidikan || ''} onChange={(e) => changeMember(i, 'pendidikan', e.target.value)} className="inp text-sm py-2" />
+                              <input value={m.pendidikan || ''} onChange={e => changeMember(i, 'pendidikan', e.target.value)} className="inp text-sm py-2" />
                             </div>
                             <div>
                               <label className="lbl">Pekerjaan</label>
-                              <input value={m.jenisPekerjaan || ''} onChange={(e) => changeMember(i, 'jenisPekerjaan', e.target.value)} className="inp text-sm py-2" />
+                              <input value={m.jenisPekerjaan || ''} onChange={e => changeMember(i, 'jenisPekerjaan', e.target.value)} className="inp text-sm py-2" />
                             </div>
                             <div>
                               <label className="lbl">Status Perkawinan</label>
-                              <input value={m.statusPerkawinan || ''} onChange={(e) => changeMember(i, 'statusPerkawinan', e.target.value)} className="inp text-sm py-2" />
+                              <input value={m.statusPerkawinan || ''} onChange={e => changeMember(i, 'statusPerkawinan', e.target.value)} className="inp text-sm py-2" />
                             </div>
                             <div>
                               <label className="lbl">Status Hubungan</label>
-                              <input value={m.statusHubunganKeluarga || ''} onChange={(e) => changeMember(i, 'statusHubunganKeluarga', e.target.value)} className="inp text-sm py-2" />
+                              <input value={m.statusHubunganKeluarga || ''} onChange={e => changeMember(i, 'statusHubunganKeluarga', e.target.value)} className="inp text-sm py-2" />
                             </div>
                             <div>
                               <label className="lbl">Nama Ayah</label>
-                              <input value={m.ayah || ''} onChange={(e) => changeMember(i, 'ayah', e.target.value)} className="inp text-sm py-2" />
+                              <input value={m.ayah || ''} onChange={e => changeMember(i, 'ayah', e.target.value)} className="inp text-sm py-2" />
                             </div>
                             <div>
                               <label className="lbl">Nama Ibu</label>
-                              <input value={m.ibu || ''} onChange={(e) => changeMember(i, 'ibu', e.target.value)} className="inp text-sm py-2" />
+                              <input value={m.ibu || ''} onChange={e => changeMember(i, 'ibu', e.target.value)} className="inp text-sm py-2" />
                             </div>
                           </div>
                         )}
@@ -460,13 +663,14 @@ export default function InputDataPage() {
                 </div>
 
                 <div className="flex gap-4 pt-4 border-t">
-                  <button onClick={prevStep} className="flex-1 bg-gray-500 text-white py-4 rounded-lg font-bold hover:bg-gray-600 transition shadow">
+                  <button onClick={prevStep} className="flex-1 bg-gray-500 text-white py-4 rounded-lg font-bold hover:bg-gray-600 transition shadow" type="button">
                     ← Kembali (Edit KTP)
                   </button>
                   <button
                     onClick={handleSubmitAll}
                     disabled={isSubmitting || !kkHeader.noKK}
                     className="flex-[2] bg-indigo-700 text-white py-4 rounded-lg font-bold shadow-lg hover:bg-indigo-800 disabled:bg-gray-400 transition transform hover:-translate-y-1"
+                    type="button"
                   >
                     {isSubmitting ? '🚀 Sedang Mengirim Data...' : '✓ SIMPAN SEMUA DATA'}
                   </button>
