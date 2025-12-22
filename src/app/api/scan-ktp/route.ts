@@ -151,15 +151,15 @@ function parseKTPData(fullText: string) {
 
 export async function POST(req: Request) {
   try {
-    // const credentials = getGoogleCredentials();
-    // const client = new ImageAnnotatorClient({ credentials });
+    const credentials = getGoogleCredentials();
+    const client = new ImageAnnotatorClient({ credentials });
 
-    const keyPath = path.join(process.cwd(), 'kunci_google.json');
+    // const keyPath = path.join(process.cwd(), 'kunci_google.json');
 
-    // Inisialisasi menggunakan keyFilename (jalur file fisik)
-    const client = new ImageAnnotatorClient({
-      keyFilename: keyPath,
-    });
+    // // Inisialisasi menggunakan keyFilename (jalur file fisik)
+    // const client = new ImageAnnotatorClient({
+    //   keyFilename: keyPath,
+    // });
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
