@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
+import path from 'path';
 
 type Anggota = {
   nik: string;
@@ -8,12 +9,7 @@ type Anggota = {
   tempatLahir?: string;
   tanggalLahir?: string;
   agama?: string;
-  pendidikan?: string;
-  jenisPekerjaan?: string;
-  statusPerkawinan?: string;
   statusHubunganKeluarga?: string;
-  ayah?: string;
-  ibu?: string;
 };
 
 function getGoogleCredentials() {
@@ -88,43 +84,12 @@ function stripKnownTokens(blockUpper: string, tokenUpper: string) {
   return blockUpper.replace(re, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function extractParents(block: string, nama: string) {
-  const up = normalizeSpaces(block).toUpperCase();
-  const nameUp = normalizeSpaces(nama).toUpperCase();
-
-  let x = up.replace(nameUp, ' ').replace(/\b\d{16}\b/g, ' ');
-  x = x.replace(/\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b/g, ' ');
-  x = x.replace(/\b(LAKI[\s\-]?LAKI|PEREMPUAN)\b/g, ' ');
-  x = x.replace(/\b(ISLAM|KRISTEN|KATOLIK|HINDU|BUDDHA|KONGHUCU)\b/g, ' ');
-  x = x.replace(/\b(BELUM KAWIN|KAWIN|CERAI HIDUP|CERAI MATI)\b/g, ' ');
-  x = x.replace(/\b(KEPALA KELUARGA|ISTRI|SUAMI|ANAK|MENANTU|CUCU|ORANG TUA|MERTUA|FAMILI LAIN|SAUDARA|KEPONAKAN)\b/g, ' ');
-  x = x.replace(/\b(TIDAK\/BELUM SEKOLAH|BELUM TAMAT SD\/SEDERAJAT|TAMAT SD\/SEDERAJAT|SLTP\/SEDERAJAT|SLTA\/SEDERAJAT|DIPLOMA I\/II|DIPLOMA III|DIPLOMA IV\/S1|S1|S2|S3)\b/g, ' ');
-  x = x.replace(/\s+/g, ' ').trim();
-
-  const words = x.split(' ').filter(Boolean);
-  if (words.length < 2) return { ayah: '', ibu: '' };
-
-  const ibu = words.slice(-3).join(' ');
-  const ayah = words.slice(0, Math.max(1, words.length - 3)).join(' ');
-
-  return {
-    ayah: cleanNameLike(ayah).toUpperCase() || '',
-    ibu: cleanNameLike(ibu).toUpperCase() || '',
-  };
-}
-
 function parseMemberBlock(block: string, nik: string, nama: string): Anggota {
   const blockNorm = normalizeSpaces(block);
   const blockUpper = blockNorm.toUpperCase();
 
   const jenisKelamin = extractGender(blockUpper);
   const agama = pickFromSet(blockUpper, ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU']);
-  const pendidikan = pickFromSet(blockUpper, [
-    'TIDAK/BELUM SEKOLAH', 'BELUM TAMAT SD/SEDERAJAT', 'TAMAT SD/SEDERAJAT',
-    'SLTP/SEDERAJAT', 'SLTA/SEDERAJAT', 'DIPLOMA I/II', 'DIPLOMA III',
-    'DIPLOMA IV/S1', 'S1', 'S2', 'S3'
-  ]);
-  const statusPerkawinan = pickFromSet(blockUpper, ['BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', 'CERAI MATI']);
   const statusHubunganKeluarga = pickFromSet(blockUpper, [
     'KEPALA KELUARGA', 'SUAMI', 'ISTRI', 'ANAK', 'MENANTU', 'CUCU',
     'ORANG TUA', 'MERTUA', 'FAMILI LAIN', 'SAUDARA', 'KEPONAKAN'
@@ -134,14 +99,9 @@ function parseMemberBlock(block: string, nik: string, nama: string): Anggota {
   const tempatLahir = extractPlaceBeforeDate(blockUpper, tanggalLahir);
 
   let tmp = blockUpper;
-  [nik, nama, jenisKelamin, agama, pendidikan, statusPerkawinan, statusHubunganKeluarga, tanggalLahir, tempatLahir]
+  [nik, nama, jenisKelamin, agama, statusHubunganKeluarga, tanggalLahir, tempatLahir]
     .filter(Boolean)
     .forEach(t => tmp = stripKnownTokens(tmp, String(t)));
-
-  tmp = tmp.replace(/\bWNI\b|\bWNA\b/g, ' ').trim();
-  const pekerjaan = cleanNameLike(tmp.split(/\s{2,}|\s\|\s/)[0] || '').toUpperCase();
-
-  const parents = extractParents(blockNorm, nama);
 
   return {
     nik,
@@ -150,12 +110,7 @@ function parseMemberBlock(block: string, nik: string, nama: string): Anggota {
     tempatLahir: tempatLahir || undefined,
     tanggalLahir: tanggalLahir || undefined,
     agama: agama || undefined,
-    pendidikan: pendidikan || undefined,
-    jenisPekerjaan: pekerjaan || undefined,
-    statusPerkawinan: statusPerkawinan || undefined,
     statusHubunganKeluarga: statusHubunganKeluarga || undefined,
-    ayah: parents.ayah || undefined,
-    ibu: parents.ibu || undefined,
   };
 }
 
@@ -221,8 +176,15 @@ function parseKKData(fullText: string) {
 
 export async function POST(req: Request) {
   try {
-    const credentials = getGoogleCredentials();
-    const client = new ImageAnnotatorClient({ credentials });
+    // const credentials = getGoogleCredentials();
+    // const client = new ImageAnnotatorClient({ credentials });
+
+    const keyPath = path.join(process.cwd(), 'kunci_google.json');
+
+    // Inisialisasi menggunakan keyFilename (jalur file fisik)
+    const client = new ImageAnnotatorClient({
+      keyFilename: keyPath,
+    });
 
     const formData = await req.formData();
     const file = formData.get('file') as File;

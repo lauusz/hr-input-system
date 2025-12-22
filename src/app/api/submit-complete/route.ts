@@ -9,13 +9,7 @@ type AnggotaKk = {
   tempatLahir?: string;
   tanggalLahir?: string;
   agama?: string;
-  pendidikan?: string;
-  jenisPekerjaan?: string;
-  statusPerkawinan?: string;
   statusHubunganKeluarga?: string;
-  ayah?: string;
-  ibu?: string;
-  _open?: boolean;
 };
 
 function getGoogleCredentials() {
@@ -53,12 +47,7 @@ function normalizeAnggota(raw: any): AnggotaKk {
     tempatLahir: s(raw?.tempatLahir) || undefined,
     tanggalLahir: s(raw?.tanggalLahir) || undefined,
     agama: s(raw?.agama) || undefined,
-    pendidikan: s(raw?.pendidikan) || undefined,
-    jenisPekerjaan: s(raw?.jenisPekerjaan) || undefined,
-    statusPerkawinan: s(raw?.statusPerkawinan) || undefined,
     statusHubunganKeluarga: s(raw?.statusHubunganKeluarga) || undefined,
-    ayah: s(raw?.ayah) || undefined,
-    ibu: s(raw?.ibu) || undefined,
   };
 }
 
@@ -121,7 +110,7 @@ export async function POST(req: Request) {
       .filter((m: AnggotaKk) => m.nik || m.nama);
 
     const anggotaJson = JSON.stringify({
-      version: 2,
+      version: 3,
       count: anggotaClean.length,
       anggotaKeluarga: anggotaClean,
     });
@@ -171,9 +160,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Success' });
   } catch (error: any) {
     console.error('[SERVER ERROR]:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, ChangeEvent } from 'react';
+import { useState, ChangeEvent, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -39,12 +39,7 @@ interface Anggota {
   tempatLahir?: string;
   tanggalLahir?: string;
   agama?: string;
-  pendidikan?: string;
-  jenisPekerjaan?: string;
-  statusPerkawinan?: string;
   statusHubunganKeluarga?: string;
-  ayah?: string;
-  ibu?: string;
   _open?: boolean;
 }
 
@@ -54,6 +49,39 @@ function safeStr(v: any) {
 
 function isFilled(v: any) {
   return typeof v === 'string' && v.trim().length > 0;
+}
+
+const AGAMA_OPTIONS = ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU'] as const;
+
+const HUBUNGAN_OPTIONS = [
+  'KEPALA KELUARGA',
+  'SUAMI',
+  'ISTRI',
+  'ANAK',
+  'MENANTU',
+  'CUCU',
+  'ORANG TUA',
+  'MERTUA',
+  'FAMILI LAIN',
+  'SAUDARA',
+  'KEPONAKAN',
+] as const;
+
+function onlyDigitsMax16(v: string) {
+  return v.replace(/\D/g, '').slice(0, 16);
+}
+
+function isMemberComplete(m: Anggota) {
+  return (
+    isFilled(m.nik) &&
+    m.nik.trim().length === 16 &&
+    isFilled(m.nama) &&
+    isFilled(m.jenisKelamin || '') &&
+    isFilled(m.tempatLahir || '') &&
+    isFilled(m.tanggalLahir || '') &&
+    isFilled(m.agama || '') &&
+    isFilled(m.statusHubunganKeluarga || '')
+  );
 }
 
 export default function InputDataPage() {
@@ -101,6 +129,14 @@ export default function InputDataPage() {
   });
 
   const [anggotaList, setAnggotaList] = useState<Anggota[]>([]);
+  const [lastAddedIndex, setLastAddedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (lastAddedIndex === null) return;
+    const el = document.getElementById(`member-${lastAddedIndex}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setLastAddedIndex(null);
+  }, [lastAddedIndex]);
 
   const handleFileKTP = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -172,13 +208,8 @@ export default function InputDataPage() {
           tempatLahir: safeStr(m?.tempatLahir) || undefined,
           tanggalLahir: safeStr(m?.tanggalLahir) || undefined,
           agama: safeStr(m?.agama) || undefined,
-          pendidikan: safeStr(m?.pendidikan) || undefined,
-          jenisPekerjaan: safeStr(m?.jenisPekerjaan) || undefined,
-          statusPerkawinan: safeStr(m?.statusPerkawinan) || undefined,
           statusHubunganKeluarga: safeStr(m?.statusHubunganKeluarga) || undefined,
-          ayah: safeStr(m?.ayah) || undefined,
-          ibu: safeStr(m?.ibu) || undefined,
-          _open: false,
+          _open: true,
         }));
 
         setAnggotaList(normalizedMembers);
@@ -208,7 +239,8 @@ export default function InputDataPage() {
     setAnggotaList(arr);
   };
 
-  const addMember = () =>
+  const addMember = () => {
+    const nextIdx = anggotaList.length;
     setAnggotaList([
       ...anggotaList,
       {
@@ -218,15 +250,12 @@ export default function InputDataPage() {
         tempatLahir: '',
         tanggalLahir: '',
         agama: '',
-        pendidikan: '',
-        jenisPekerjaan: '',
-        statusPerkawinan: '',
         statusHubunganKeluarga: '',
-        ayah: '',
-        ibu: '',
         _open: true,
       },
     ]);
+    setLastAddedIndex(nextIdx);
+  };
 
   const removeMember = (idx: number) => setAnggotaList(anggotaList.filter((_, i) => i !== idx));
 
@@ -296,6 +325,10 @@ export default function InputDataPage() {
       const a = anggotaList[i];
       if (!isFilled(a.nik) || !isFilled(a.nama)) {
         alert(`Anggota keluarga ke-${i + 1}: NIK dan Nama wajib diisi.`);
+        return;
+      }
+      if (a.nik.trim().length !== 16) {
+        alert(`Anggota keluarga ke-${i + 1}: NIK harus 16 angka.`);
         return;
       }
     }
@@ -558,107 +591,153 @@ export default function InputDataPage() {
                 </div>
 
                 <div className="bg-gray-50 p-5 rounded-lg mb-8 border border-gray-200">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-semibold text-gray-700">Daftar Anggota Keluarga</h3>
-                    <button onClick={addMember} className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full hover:bg-indigo-200 font-bold transition">
-                      + Tambah Baris Manual
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-800 text-base">Anggota Keluarga</h3>
+                      <div className="text-sm text-gray-600">
+                        Isi data <b>satu per satu</b>. Klik tombol <b>“Isi Detail”</b> pada setiap anggota.
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={addMember}
+                      className="bg-indigo-700 text-white px-4 py-3 rounded-lg font-bold hover:bg-indigo-800 transition shadow w-full md:w-auto"
+                      type="button"
+                    >
+                      ➕ Tambah Anggota Keluarga
                     </button>
                   </div>
 
                   {anggotaList.length > 0 ? (
-                    anggotaList.map((m, i) => (
-                      <div key={i} className="mb-3">
-                        <div className="flex gap-3 items-center">
-                          <div className="flex-1">
-                            <input
-                              placeholder="NIK Anggota"
-                              value={m.nik}
-                              onChange={e => changeMember(i, 'nik', e.target.value)}
-                              className="inp text-sm py-2"
-                              required
-                            />
-                          </div>
-                          <div className="flex-[2]">
-                            <input
-                              placeholder="Nama Lengkap"
-                              value={m.nama}
-                              onChange={e => changeMember(i, 'nama', e.target.value)}
-                              className="inp text-sm py-2"
-                              required
-                            />
+                    anggotaList.map((m, i) => {
+                      const complete = isMemberComplete(m);
+                      const title = m.nama?.trim() ? m.nama.trim() : `Anggota #${i + 1}`;
+                      return (
+                        <div key={i} id={`member-${i}`} className={`memberCard ${m._open ? 'open' : ''}`}>
+                          <div className="memberHeader">
+                            <div className="memberTitle">
+                              <div className="memberName">{title}</div>
+                              <div className="memberMeta">
+                                <span className={`pill ${complete ? 'ok' : 'warn'}`}>{complete ? '✅ Lengkap' : '⚠️ Belum lengkap'}</span>
+                                {m.statusHubunganKeluarga ? <span className="pill neutral">{m.statusHubunganKeluarga}</span> : null}
+                              </div>
+                            </div>
+
+                            <div className="memberActions">
+                              <button
+                                onClick={() => toggleMemberOpen(i)}
+                                className="btnSoft"
+                                type="button"
+                              >
+                                {m._open ? 'Tutup Detail' : 'Isi Detail'}
+                              </button>
+
+                              <button
+                                onClick={() => removeMember(i)}
+                                className="btnDanger"
+                                type="button"
+                              >
+                                Hapus
+                              </button>
+                            </div>
                           </div>
 
-                          <button
-                            onClick={() => toggleMemberOpen(i)}
-                            className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold px-3 py-2 rounded-md transition"
-                            title="Detail"
-                            type="button"
-                          >
-                            {m._open ? '▴' : '▾'}
-                          </button>
+                          <div className="memberBody">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="md:col-span-2">
+                                <label className="lbl">Nama Lengkap</label>
+                                <input
+                                  value={m.nama}
+                                  onChange={e => changeMember(i, 'nama', e.target.value)}
+                                  className="inp"
+                                  placeholder="Contoh: BUDI SANTOSO"
+                                />
+                              </div>
 
-                          <button
-                            onClick={() => removeMember(i)}
-                            className="bg-white border border-red-200 text-red-500 hover:bg-red-50 font-bold px-3 py-2 rounded-md transition"
-                            title="Hapus"
-                            type="button"
-                          >
-                            ✕
-                          </button>
+                              <div className="md:col-span-2">
+                                <label className="lbl">NIK (16 angka)</label>
+                                <input
+                                  inputMode="numeric"
+                                  value={m.nik}
+                                  onChange={e => changeMember(i, 'nik', onlyDigitsMax16(e.target.value))}
+                                  className={`inp ${m.nik && m.nik.trim().length !== 16 ? 'inpErr' : ''}`}
+                                  placeholder="Masukkan 16 angka NIK"
+                                />
+                                {m.nik && m.nik.trim().length !== 16 && (
+                                  <div className="helpErr">NIK harus 16 angka.</div>
+                                )}
+                              </div>
+                            </div>
+
+                            {m._open && (
+                              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="lbl">Jenis Kelamin</label>
+                                  <select value={m.jenisKelamin || ''} onChange={e => changeMember(i, 'jenisKelamin', e.target.value)} className="inp cursor-pointer">
+                                    <option value="">Pilih jenis kelamin</option>
+                                    <option value="LAKI-LAKI">LAKI-LAKI</option>
+                                    <option value="PEREMPUAN">PEREMPUAN</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="lbl">Agama</label>
+                                  <select value={m.agama || ''} onChange={e => changeMember(i, 'agama', e.target.value)} className="inp cursor-pointer">
+                                    <option value="">Pilih agama</option>
+                                    {AGAMA_OPTIONS.map(a => (
+                                      <option key={a} value={a}>
+                                        {a}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                  <label className="lbl">Status Hubungan dalam Keluarga</label>
+                                  <select
+                                    value={m.statusHubunganKeluarga || ''}
+                                    onChange={e => changeMember(i, 'statusHubunganKeluarga', e.target.value)}
+                                    className="inp cursor-pointer"
+                                  >
+                                    <option value="">Pilih status hubungan</option>
+                                    {HUBUNGAN_OPTIONS.map(s => (
+                                      <option key={s} value={s}>
+                                        {s}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="lbl">Tempat Lahir</label>
+                                  <input
+                                    value={m.tempatLahir || ''}
+                                    onChange={e => changeMember(i, 'tempatLahir', e.target.value)}
+                                    className="inp"
+                                    placeholder="Contoh: SURABAYA"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="lbl">Tanggal Lahir</label>
+                                  <input
+                                    type="date"
+                                    value={m.tanggalLahir || ''}
+                                    onChange={e => changeMember(i, 'tanggalLahir', e.target.value)}
+                                    className="inp cursor-pointer"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {m.statusHubunganKeluarga && <span className="tag">{m.statusHubunganKeluarga}</span>}
-                          {m.jenisKelamin && <span className="tag">{m.jenisKelamin}</span>}
-                          {m.tanggalLahir && <span className="tag">{m.tanggalLahir}</span>}
-                          {m.agama && <span className="tag">{m.agama}</span>}
-                        </div>
-
-                        {m._open && (
-                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 bg-white border border-gray-200 rounded-lg p-4">
-                            <div>
-                              <label className="lbl">Tempat Lahir</label>
-                              <input value={m.tempatLahir || ''} onChange={e => changeMember(i, 'tempatLahir', e.target.value)} className="inp text-sm py-2" />
-                            </div>
-                            <div>
-                              <label className="lbl">Tanggal Lahir</label>
-                              <input
-                                value={m.tanggalLahir || ''}
-                                onChange={e => changeMember(i, 'tanggalLahir', e.target.value)}
-                                className="inp text-sm py-2"
-                                placeholder="DD/MM/YYYY"
-                              />
-                            </div>
-                            <div>
-                              <label className="lbl">Pendidikan</label>
-                              <input value={m.pendidikan || ''} onChange={e => changeMember(i, 'pendidikan', e.target.value)} className="inp text-sm py-2" />
-                            </div>
-                            <div>
-                              <label className="lbl">Pekerjaan</label>
-                              <input value={m.jenisPekerjaan || ''} onChange={e => changeMember(i, 'jenisPekerjaan', e.target.value)} className="inp text-sm py-2" />
-                            </div>
-                            <div>
-                              <label className="lbl">Status Perkawinan</label>
-                              <input value={m.statusPerkawinan || ''} onChange={e => changeMember(i, 'statusPerkawinan', e.target.value)} className="inp text-sm py-2" />
-                            </div>
-                            <div>
-                              <label className="lbl">Status Hubungan</label>
-                              <input value={m.statusHubunganKeluarga || ''} onChange={e => changeMember(i, 'statusHubunganKeluarga', e.target.value)} className="inp text-sm py-2" />
-                            </div>
-                            <div>
-                              <label className="lbl">Nama Ayah</label>
-                              <input value={m.ayah || ''} onChange={e => changeMember(i, 'ayah', e.target.value)} className="inp text-sm py-2" />
-                            </div>
-                            <div>
-                              <label className="lbl">Nama Ibu</label>
-                              <input value={m.ibu || ''} onChange={e => changeMember(i, 'ibu', e.target.value)} className="inp text-sm py-2" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
-                    <p className="text-center text-gray-400 italic text-sm py-4">Belum ada anggota keluarga terdeteksi.</p>
+                    <div className="emptyBox">
+                      <div className="text-gray-700 font-bold mb-1">Belum ada anggota keluarga.</div>
+                      <div className="text-gray-600 text-sm mb-3">Klik tombol <b>“Tambah Anggota Keluarga”</b> untuk mulai mengisi.</div>
+                    </div>
                   )}
                 </div>
 
@@ -681,14 +760,85 @@ export default function InputDataPage() {
         )}
 
         <style jsx>{`
-          .lbl { display: block; font-size: 0.85rem; font-weight: 600; color: #4b5563; margin-bottom: 4px; }
-          .inp { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: #1f2937; font-weight: 500; transition: all 0.2s; }
-          .inp:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-          .tag { font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; }
+          .lbl { display: block; font-size: 0.85rem; font-weight: 700; color: #374151; margin-bottom: 6px; }
+          .inp { width: 100%; padding: 12px 12px; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; color: #111827; font-weight: 600; transition: all 0.2s; }
+          .inp:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12); }
+          .inpErr { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12); }
+          .helpErr { margin-top: 6px; font-size: 0.8rem; font-weight: 700; color: #b91c1c; }
+
           .animate-fade-in { animation: fadeIn 0.4s ease-out; }
           .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+          .memberCard {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #fff;
+            overflow: hidden;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 0 rgba(0,0,0,.02);
+          }
+          .memberCard.open {
+            border-color: #c7d2fe;
+            box-shadow: 0 6px 18px rgba(79,70,229,.08);
+          }
+          .memberHeader {
+            padding: 14px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: linear-gradient(to right, #ffffff, #fafafa);
+            border-bottom: 1px solid #f3f4f6;
+          }
+          .memberTitle { flex: 1; min-width: 0; }
+          .memberName { font-weight: 900; color: #111827; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .memberMeta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; }
+          .pill {
+            font-size: 0.75rem;
+            font-weight: 900;
+            padding: 5px 10px;
+            border-radius: 999px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            color: #374151;
+          }
+          .pill.ok { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+          .pill.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+          .pill.neutral { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+
+          .memberActions { display: flex; gap: 10px; }
+          .btnSoft {
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            color: #111827;
+            font-weight: 900;
+            padding: 10px 12px;
+            border-radius: 10px;
+            transition: .15s;
+            min-width: 120px;
+          }
+          .btnSoft:hover { background: #f9fafb; }
+          .btnDanger {
+            background: #fff;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            font-weight: 900;
+            padding: 10px 12px;
+            border-radius: 10px;
+            transition: .15s;
+          }
+          .btnDanger:hover { background: #fef2f2; }
+
+          .memberBody { padding: 14px 14px; }
+          .emptyBox {
+            padding: 16px;
+            border: 1px dashed #d1d5db;
+            border-radius: 12px;
+            background: #fff;
+            text-align: center;
+          }
         `}</style>
       </div>
     </main>
