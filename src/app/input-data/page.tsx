@@ -22,14 +22,6 @@ interface KTPData {
 
 interface KKHeader {
   noKK: string;
-  namaKepalaKeluarga: string;
-  alamat: string;
-  rtrw: string;
-  kodePos: string;
-  kelDesa: string;
-  kecamatan: string;
-  kabupatenKota: string;
-  provinsi: string;
 }
 
 interface Anggota {
@@ -118,14 +110,6 @@ export default function InputDataPage() {
 
   const [kkHeader, setKkHeader] = useState<KKHeader>({
     noKK: '',
-    namaKepalaKeluarga: '',
-    alamat: '',
-    rtrw: '',
-    kodePos: '',
-    kelDesa: '',
-    kecamatan: '',
-    kabupatenKota: '',
-    provinsi: '',
   });
 
   const [anggotaList, setAnggotaList] = useState<Anggota[]>([]);
@@ -190,14 +174,6 @@ export default function InputDataPage() {
       if (res.ok) {
         setKkHeader({
           noKK: json.data.noKK || '',
-          namaKepalaKeluarga: json.data.namaKepalaKeluarga || '',
-          alamat: json.data.alamat || '',
-          rtrw: json.data.rtrw || '',
-          kodePos: json.data.kodePos || '',
-          kelDesa: json.data.kelDesa || '',
-          kecamatan: json.data.kecamatan || '',
-          kabupatenKota: json.data.kabupatenKota || '',
-          provinsi: json.data.provinsi || '',
         });
 
         const rawMembers = Array.isArray(json.data.anggotaKeluarga) ? json.data.anggotaKeluarga : [];
@@ -303,22 +279,9 @@ export default function InputDataPage() {
       return;
     }
 
-    const requiredKkFields: (keyof KKHeader)[] = [
-      'noKK',
-      'namaKepalaKeluarga',
-      'alamat',
-      'rtrw',
-      'kelDesa',
-      'kecamatan',
-      'kabupatenKota',
-      'provinsi',
-    ];
-
-    for (const key of requiredKkFields) {
-      if (!isFilled(kkHeader[key])) {
-        alert(`Field KK "${key}" wajib diisi.`);
-        return;
-      }
+    if (!isFilled(kkHeader.noKK)) {
+      alert('No. Kartu Keluarga wajib diisi.');
+      return;
     }
 
     for (let i = 0; i < anggotaList.length; i++) {
@@ -337,7 +300,7 @@ export default function InputDataPage() {
 
     const payload = {
       ktp: ktpData,
-      kk: { ...kkHeader, anggotaKeluarga: anggotaList.map(({ _open, ...rest }) => rest) },
+      kk: { noKK: kkHeader.noKK, anggotaKeluarga: anggotaList.map(({ _open, ...rest }) => rest) },
     };
 
     const fd = new FormData();
@@ -543,50 +506,10 @@ export default function InputDataPage() {
               <div className="animate-slide-up bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">📝 Hasil Scan KK</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 gap-5 mb-8">
+                  <div>
                     <label className="lbl">No. Kartu Keluarga</label>
                     <input name="noKK" value={kkHeader.noKK} onChange={changeKKHead} className="inp font-bold text-lg tracking-wide" required />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="lbl">Nama Kepala Keluarga</label>
-                    <input name="namaKepalaKeluarga" value={kkHeader.namaKepalaKeluarga} onChange={changeKKHead} className="inp" required />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="lbl">Alamat KK</label>
-                    <input name="alamat" value={kkHeader.alamat} onChange={changeKKHead} className="inp" required />
-                  </div>
-
-                  <div>
-                    <label className="lbl">RT/RW</label>
-                    <input name="rtrw" value={kkHeader.rtrw} onChange={changeKKHead} className="inp" required />
-                  </div>
-
-                  <div>
-                    <label className="lbl">Kode Pos</label>
-                    <input name="kodePos" value={kkHeader.kodePos} onChange={changeKKHead} className="inp" />
-                  </div>
-
-                  <div>
-                    <label className="lbl">Desa/Kelurahan</label>
-                    <input name="kelDesa" value={kkHeader.kelDesa} onChange={changeKKHead} className="inp" required />
-                  </div>
-
-                  <div>
-                    <label className="lbl">Kecamatan</label>
-                    <input name="kecamatan" value={kkHeader.kecamatan} onChange={changeKKHead} className="inp" required />
-                  </div>
-
-                  <div>
-                    <label className="lbl">Kabupaten/Kota</label>
-                    <input name="kabupatenKota" value={kkHeader.kabupatenKota} onChange={changeKKHead} className="inp" required />
-                  </div>
-
-                  <div>
-                    <label className="lbl">Provinsi</label>
-                    <input name="provinsi" value={kkHeader.provinsi} onChange={changeKKHead} className="inp" required />
                   </div>
                 </div>
 
@@ -624,19 +547,11 @@ export default function InputDataPage() {
                             </div>
 
                             <div className="memberActions">
-                              <button
-                                onClick={() => toggleMemberOpen(i)}
-                                className="btnSoft"
-                                type="button"
-                              >
+                              <button onClick={() => toggleMemberOpen(i)} className="btnSoft" type="button">
                                 {m._open ? 'Tutup Detail' : 'Isi Detail'}
                               </button>
 
-                              <button
-                                onClick={() => removeMember(i)}
-                                className="btnDanger"
-                                type="button"
-                              >
+                              <button onClick={() => removeMember(i)} className="btnDanger" type="button">
                                 Hapus
                               </button>
                             </div>
@@ -646,12 +561,7 @@ export default function InputDataPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="md:col-span-2">
                                 <label className="lbl">Nama Lengkap</label>
-                                <input
-                                  value={m.nama}
-                                  onChange={e => changeMember(i, 'nama', e.target.value)}
-                                  className="inp"
-                                  placeholder="Contoh: BUDI SANTOSO"
-                                />
+                                <input value={m.nama} onChange={e => changeMember(i, 'nama', e.target.value)} className="inp" placeholder="Contoh: BUDI SANTOSO" />
                               </div>
 
                               <div className="md:col-span-2">
@@ -663,9 +573,7 @@ export default function InputDataPage() {
                                   className={`inp ${m.nik && m.nik.trim().length !== 16 ? 'inpErr' : ''}`}
                                   placeholder="Masukkan 16 angka NIK"
                                 />
-                                {m.nik && m.nik.trim().length !== 16 && (
-                                  <div className="helpErr">NIK harus 16 angka.</div>
-                                )}
+                                {m.nik && m.nik.trim().length !== 16 && <div className="helpErr">NIK harus 16 angka.</div>}
                               </div>
                             </div>
 
@@ -710,22 +618,12 @@ export default function InputDataPage() {
 
                                 <div>
                                   <label className="lbl">Tempat Lahir</label>
-                                  <input
-                                    value={m.tempatLahir || ''}
-                                    onChange={e => changeMember(i, 'tempatLahir', e.target.value)}
-                                    className="inp"
-                                    placeholder="Contoh: SURABAYA"
-                                  />
+                                  <input value={m.tempatLahir || ''} onChange={e => changeMember(i, 'tempatLahir', e.target.value)} className="inp" placeholder="Contoh: SURABAYA" />
                                 </div>
 
                                 <div>
                                   <label className="lbl">Tanggal Lahir</label>
-                                  <input
-                                    type="date"
-                                    value={m.tanggalLahir || ''}
-                                    onChange={e => changeMember(i, 'tanggalLahir', e.target.value)}
-                                    className="inp cursor-pointer"
-                                  />
+                                  <input type="date" value={m.tanggalLahir || ''} onChange={e => changeMember(i, 'tanggalLahir', e.target.value)} className="inp cursor-pointer" />
                                 </div>
                               </div>
                             )}
@@ -736,7 +634,9 @@ export default function InputDataPage() {
                   ) : (
                     <div className="emptyBox">
                       <div className="text-gray-700 font-bold mb-1">Belum ada anggota keluarga.</div>
-                      <div className="text-gray-600 text-sm mb-3">Klik tombol <b>“Tambah Anggota Keluarga”</b> untuk mulai mengisi.</div>
+                      <div className="text-gray-600 text-sm mb-3">
+                        Klik tombol <b>“Tambah Anggota Keluarga”</b> untuk mulai mengisi.
+                      </div>
                     </div>
                   )}
                 </div>

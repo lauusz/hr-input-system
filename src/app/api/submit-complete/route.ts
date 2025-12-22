@@ -51,6 +51,30 @@ function normalizeAnggota(raw: any): AnggotaKk {
   };
 }
 
+function csvEscapeCell(v: string) {
+  const x = (v ?? '').replace(/\r?\n/g, ' ').trim();
+  return x.replace(/;/g, ' ').replace(/\s+/g, ' ');
+}
+
+function anggotaToCsv(anggota: AnggotaKk[]) {
+  const header = 'NIK;NAMA;JENIS_KELAMIN;TEMPAT_LAHIR;TANGGAL_LAHIR;AGAMA;STATUS_HUBUNGAN';
+
+  const rows = anggota.map(a => {
+    const cols = [
+      csvEscapeCell(a.nik),
+      csvEscapeCell(a.nama),
+      csvEscapeCell(a.jenisKelamin || ''),
+      csvEscapeCell(a.tempatLahir || ''),
+      csvEscapeCell(a.tanggalLahir || ''),
+      csvEscapeCell(a.agama || ''),
+      csvEscapeCell(a.statusHubunganKeluarga || ''),
+    ];
+    return cols.join(';');
+  });
+
+  return [header, ...rows].join('\n');
+}
+
 async function uploadToGCS(file: File, filename: string, credentials: any): Promise<string> {
   const storage = new Storage({ credentials });
 
@@ -89,7 +113,11 @@ export async function POST(req: Request) {
     }
 
     const allData = JSON.parse(dataString);
-    const { ktp, kk } = allData;
+    const { ktp, kk } = allData || {};
+
+    if (!ktp?.nik || !kk?.noKK) {
+      return NextResponse.json({ error: 'Data tidak valid (NIK / NoKK kosong)' }, { status: 400 });
+    }
 
     console.log('[API] Memulai proses untuk NIK:', ktp?.nik);
 
@@ -109,15 +137,12 @@ export async function POST(req: Request) {
       .map((m: any) => normalizeAnggota(m))
       .filter((m: AnggotaKk) => m.nik || m.nama);
 
-    const anggotaJson = JSON.stringify({
-      version: 3,
-      count: anggotaClean.length,
-      anggotaKeluarga: anggotaClean,
-    });
+    const anggotaCsv = anggotaToCsv(anggotaClean);
 
     const values = [
       [
         new Date().toLocaleString('id-ID'),
+
         ktp.nik,
         ktp.nama,
         ktp.tempatLahir,
@@ -133,17 +158,10 @@ export async function POST(req: Request) {
         ktp.kewarganegaraan,
 
         kk.noKK,
-        kk.namaKepalaKeluarga,
-        kk.alamat,
-        kk.kodePos,
-        kk.kelDesa,
-        kk.kecamatan,
-        kk.kabupatenKota,
-        kk.provinsi,
 
         linkKTP,
         linkKK,
-        anggotaJson,
+        anggotaCsv,
       ],
     ];
 
@@ -151,7 +169,7 @@ export async function POST(req: Request) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:Y',
+      range: 'Sheet1!A:R',
       valueInputOption: 'USER_ENTERED',
       requestBody: { values },
     });

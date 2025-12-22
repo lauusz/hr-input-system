@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
-// import path from 'path';
 
 type Anggota = {
   nik: string;
@@ -91,8 +90,17 @@ function parseMemberBlock(block: string, nik: string, nama: string): Anggota {
   const jenisKelamin = extractGender(blockUpper);
   const agama = pickFromSet(blockUpper, ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU']);
   const statusHubunganKeluarga = pickFromSet(blockUpper, [
-    'KEPALA KELUARGA', 'SUAMI', 'ISTRI', 'ANAK', 'MENANTU', 'CUCU',
-    'ORANG TUA', 'MERTUA', 'FAMILI LAIN', 'SAUDARA', 'KEPONAKAN'
+    'KEPALA KELUARGA',
+    'SUAMI',
+    'ISTRI',
+    'ANAK',
+    'MENANTU',
+    'CUCU',
+    'ORANG TUA',
+    'MERTUA',
+    'FAMILI LAIN',
+    'SAUDARA',
+    'KEPONAKAN',
   ]);
 
   const tanggalLahir = extractDate(blockNorm);
@@ -101,7 +109,7 @@ function parseMemberBlock(block: string, nik: string, nama: string): Anggota {
   let tmp = blockUpper;
   [nik, nama, jenisKelamin, agama, statusHubunganKeluarga, tanggalLahir, tempatLahir]
     .filter(Boolean)
-    .forEach(t => tmp = stripKnownTokens(tmp, String(t)));
+    .forEach(t => (tmp = stripKnownTokens(tmp, String(t))));
 
   return {
     nik,
@@ -118,15 +126,6 @@ function parseKKData(fullText: string) {
   const lines = fullText.split('\n').map(l => l.replace(/\r/g, ''));
 
   let noKK = '';
-  let namaKepalaKeluarga = '';
-  let alamat = '';
-  let rtrw = '';
-  let kodePos = '';
-  let kelDesa = '';
-  let kecamatan = '';
-  let kabupatenKota = '';
-  let provinsi = '';
-
   const anggotaKeluarga: Anggota[] = [];
   const foundNiks = new Set<string>();
 
@@ -162,14 +161,6 @@ function parseKKData(fullText: string) {
 
   return {
     noKK,
-    namaKepalaKeluarga,
-    alamat,
-    rtrw,
-    kodePos,
-    kelDesa,
-    kecamatan,
-    kabupatenKota,
-    provinsi,
     anggotaKeluarga,
   };
 }
@@ -178,13 +169,6 @@ export async function POST(req: Request) {
   try {
     const credentials = getGoogleCredentials();
     const client = new ImageAnnotatorClient({ credentials });
-
-    // const keyPath = path.join(process.cwd(), 'kunci_google.json');
-
-    // // Inisialisasi menggunakan keyFilename (jalur file fisik)
-    // const client = new ImageAnnotatorClient({
-    //   keyFilename: keyPath,
-    // });
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
