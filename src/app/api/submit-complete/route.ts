@@ -25,6 +25,10 @@ function getGoogleCredentials() {
   return parsed;
 }
 
+function s(v: any) {
+  return typeof v === 'string' ? v.trim() : '';
+}
+
 async function uploadToGCS(file: File, filename: string, credentials: any): Promise<string> {
   const storage = new Storage({ credentials });
 
@@ -62,18 +66,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const allData = JSON.parse(dataString);
-    const { ktp, kk } = allData || {};
+    let allData: any;
+    try {
+      allData = JSON.parse(dataString);
+    } catch {
+      return NextResponse.json({ error: 'Data tidak valid (JSON rusak)' }, { status: 400 });
+    }
 
-    if (!ktp?.nik || !kk?.noKK) {
+    const ktp = allData?.ktp || {};
+    const kk = allData?.kk || {};
+
+    const nik = s(ktp?.nik);
+    const noKK = s(kk?.noKK);
+    const pendidikanTerakhir = s(kk?.pendidikanTerakhir);
+
+    if (!nik || !noKK) {
       return NextResponse.json({ error: 'Data tidak valid (NIK / NoKK kosong)' }, { status: 400 });
     }
 
-    console.log('[API] Memulai proses untuk NIK:', ktp?.nik);
+    if (!pendidikanTerakhir) {
+      return NextResponse.json({ error: 'Pendidikan terakhir wajib diisi' }, { status: 400 });
+    }
+
+    console.log('[API] Memulai proses untuk NIK:', nik);
 
     const timestamp = Date.now();
-    const filenameKTP = `KTP_${ktp.nik}_${timestamp}.jpg`;
-    const filenameKK = `KK_${kk.noKK}_${timestamp}.jpg`;
+    const filenameKTP = `KTP_${nik}_${timestamp}.jpg`;
+    const filenameKK = `KK_${noKK}_${timestamp}.jpg`;
 
     const [linkKTP, linkKK] = await Promise.all([
       uploadToGCS(fileKTP, filenameKTP, credentials),
@@ -86,21 +105,22 @@ export async function POST(req: Request) {
       [
         new Date().toLocaleString('id-ID'),
 
-        ktp.nik,
-        ktp.nama,
-        ktp.tempatLahir,
-        ktp.tanggalLahir,
-        ktp.jenisKelamin,
-        ktp.alamat,
-        ktp.rtRw,
-        ktp.kelDesa,
-        ktp.kecamatan,
-        ktp.agama,
-        ktp.statusPerkawinan,
-        ktp.pekerjaan,
-        ktp.kewarganegaraan,
+        s(ktp?.nik),
+        s(ktp?.nama),
+        s(ktp?.tempatLahir),
+        s(ktp?.tanggalLahir),
+        s(ktp?.jenisKelamin),
+        s(ktp?.alamat),
+        s(ktp?.rtRw),
+        s(ktp?.kelDesa),
+        s(ktp?.kecamatan),
+        s(ktp?.agama),
+        s(ktp?.statusPerkawinan),
+        s(ktp?.pekerjaan),
+        s(ktp?.kewarganegaraan),
 
-        kk.noKK,
+        noKK,
+        pendidikanTerakhir,
 
         linkKTP,
         linkKK,
@@ -111,7 +131,7 @@ export async function POST(req: Request) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:Q',
+      range: 'Sheet1!A:R',
       valueInputOption: 'USER_ENTERED',
       requestBody: { values },
     });
