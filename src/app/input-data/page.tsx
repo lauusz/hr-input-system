@@ -23,7 +23,25 @@ interface KTPData {
 
 interface KKHeader {
   noKK: string;
-  pendidikanTerakhir: string; // UPDATE: Tambah field interface
+  pendidikanTerakhir: string;
+}
+
+interface InitialFormData {
+  namaLengkap: string;
+  noHp: string;
+  email: string;
+  agama: string;
+  namaBank: string;
+  noRekening: string;
+  pendidikanTerakhir: string;
+  tanggalLahir: string;
+  tempatLahir: string;
+  domisili: string;
+  provinsi: string;
+  kabKota: string;
+  kecamatan: string;
+  desaKelurahan: string;
+  kodePos: string;
 }
 
 // --- HELPER ---
@@ -70,7 +88,25 @@ export default function InputDataPage() {
 
   const [kkHeader, setKkHeader] = useState<KKHeader>({
     noKK: '',
-    pendidikanTerakhir: '', // UPDATE: Inisialisasi state
+    pendidikanTerakhir: '',
+  });
+
+  const [initialForm, setInitialForm] = useState<InitialFormData>({
+    namaLengkap: '',
+    noHp: '',
+    email: '',
+    agama: '',
+    namaBank: '',
+    noRekening: '',
+    pendidikanTerakhir: '',
+    tanggalLahir: '',
+    tempatLahir: '',
+    domisili: '',
+    provinsi: '',
+    kabKota: '',
+    kecamatan: '',
+    desaKelurahan: '',
+    kodePos: '',
   });
 
   // --- HANDLERS KTP (IMAGE ONLY) ---
@@ -153,10 +189,32 @@ export default function InputDataPage() {
   };
 
   // --- FORM HANDLERS ---
+  const changeInitialForm = (e: any) => setInitialForm({ ...initialForm, [e.target.name]: e.target.value });
+  const changeInitialFormNumeric = (e: any) => {
+    const onlyNums = e.target.value.replace(/[^0-9]/g, '');
+    setInitialForm({ ...initialForm, [e.target.name]: onlyNums });
+  };
   const changeKTP = (e: any) => setKtpData({ ...ktpData, [e.target.name]: e.target.value });
   const changeKKHead = (e: any) => setKkHeader({ ...kkHeader, [e.target.name]: e.target.value });
 
-  const nextStep = () => {
+  const nextStepFormToKtp = () => {
+    // Basic validation for initial form
+    const requiredInitials: (keyof InitialFormData)[] = [
+      'namaLengkap', 'noHp', 'email', 'agama', 'namaBank', 'noRekening', 'pendidikanTerakhir', 
+      'tanggalLahir', 'tempatLahir', 'domisili', 'provinsi', 
+      'kabKota', 'kecamatan', 'desaKelurahan', 'kodePos'
+    ];
+    for (const key of requiredInitials) {
+      if (!isFilled(initialForm[key])) {
+        alert(`Field "${key}" di Form Awal wajib diisi.`);
+        return;
+      }
+    }
+    setStep(2);
+    window.scrollTo(0, 0);
+  };
+
+  const nextStepKtpToKk = () => {
     const requiredKtpFields: (keyof KTPData)[] = [
       'nik', 'nama', 'tempatLahir', 'tanggalLahir', 'jenisKelamin',
       'alamat', 'rtRw', 'kelDesa', 'kecamatan', 'agama',
@@ -168,10 +226,6 @@ export default function InputDataPage() {
         alert(`Field KTP "${key}" wajib diisi.`);
         return;
       }
-      if (!isFilled(ktpData.tanggalLahir)) {
-        alert('Tanggal Lahir wajib diisi.');
-        return;
-      }
     }
 
     if (!fileKTP) {
@@ -179,12 +233,12 @@ export default function InputDataPage() {
       return;
     }
 
-    setStep(2);
+    setStep(3);
     window.scrollTo(0, 0);
   };
 
-  const prevStep = () => {
-    setStep(1);
+  const prevStep = (toStep: number) => {
+    setStep(toStep);
     window.scrollTo(0, 0);
   };
 
@@ -214,8 +268,8 @@ export default function InputDataPage() {
     setIsSubmitting(true);
 
     const payload = {
+      form: initialForm,
       ktp: ktpData,
-      // UPDATE: Masukkan pendidikanTerakhir ke payload
       kk: {
         noKK: kkHeader.noKK,
         pendidikanTerakhir: kkHeader.pendidikanTerakhir
@@ -256,18 +310,113 @@ export default function InputDataPage() {
           <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full font-bold transition-all ${step === 1 ? 'bg-blue-600 text-white scale-110' : 'bg-green-500 text-white'}`}>
             1
           </div>
-          <div className={`w-16 md:w-24 h-1 transition-all ${step === 2 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-          <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full font-bold transition-all ${step === 2 ? 'bg-green-600 text-white scale-110' : 'bg-gray-300 text-gray-500'}`}>
+          <div className={`w-10 md:w-16 h-1 transition-all ${step >= 2 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+          <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full font-bold transition-all ${step === 2 ? 'bg-blue-600 text-white scale-110' : step === 3 ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
             2
+          </div>
+          <div className={`w-10 md:w-16 h-1 transition-all ${step === 3 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+          <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full font-bold transition-all ${step === 3 ? 'bg-blue-600 text-white scale-110' : 'bg-gray-300 text-gray-500'}`}>
+            3
           </div>
         </div>
 
         <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-center text-gray-800">
-          {step === 1 ? 'Langkah 1: Input Data KTP' : 'Langkah 2: Input Data KK'}
+          {step === 1 ? 'Langkah 1: Isi Form Awal' : step === 2 ? 'Langkah 2: Input Data KTP' : 'Langkah 3: Input Data KK'}
         </h1>
 
-        {/* --- STEP 1: KTP --- */}
+        {/* --- STEP 1: INITIAL FORM --- */}
         {step === 1 && (
+          <section className="animate-fade-in animate-slide-up bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm mb-8">
+            <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">📝 Form Data Diri</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-6">
+              <div className="col-span-1 md:col-span-2">
+                <label className="lbl">Nama Lengkap</label>
+                <input name="namaLengkap" value={initialForm.namaLengkap} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">No HP</label>
+                <input name="noHp" value={initialForm.noHp} onChange={changeInitialFormNumeric} className="inp" required inputMode="numeric" />
+              </div>
+              <div>
+                <label className="lbl">Email</label>
+                <input name="email" value={initialForm.email} onChange={changeInitialForm} className="inp" required type="email" />
+              </div>
+              <div>
+                <label className="lbl">Agama</label>
+                <select name="agama" value={initialForm.agama} onChange={changeInitialForm} className="inp cursor-pointer" required>
+                  <option value="">-- Pilih --</option>
+                  {['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'KEPERCAYAAN TERHADAP TUHAN YME'].map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="lbl">Nama Bank</label>
+                <input name="namaBank" value={initialForm.namaBank} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">No Rekening</label>
+                <input name="noRekening" value={initialForm.noRekening} onChange={changeInitialFormNumeric} className="inp" required inputMode="numeric" />
+              </div>
+              <div>
+                <label className="lbl">Pendidikan Terakhir</label>
+                <select name="pendidikanTerakhir" value={initialForm.pendidikanTerakhir} onChange={changeInitialForm} className="inp cursor-pointer" required>
+                  <option value="">-- Pilih --</option>
+                  <option value="TIDAK / BELUM SEKOLAH">TIDAK / BELUM SEKOLAH</option>
+                  <option value="BELUM TAMAT SD/SEDERAJAT">BELUM TAMAT SD/SEDERAJAT</option>
+                  <option value="SD">TAMAT SD / SEDERAJAT</option>
+                  <option value="SLTP/SEDERAJAT">SLTP/SEDERAJAT</option>
+                  <option value="SLTA / SEDERAJAT">SLTA / SEDERAJAT</option>
+                  <option value="DIPLOMA I / II">DIPLOMA I / II</option>
+                  <option value="AKADEMI / DIPLOMA III / SARJANA MUDA">AKADEMI / DIPLOMA III / SARJANA MUDA</option>
+                  <option value="DIPLOMA IV / STRATA I">DIPLOMA IV / STRATA I</option>
+                  <option value="STRATA II">STRATA II</option>
+                  <option value="STRATA III">STRATA III</option>
+                </select>
+              </div>
+              <div>
+                <label className="lbl">Tanggal Lahir</label>
+                <input name="tanggalLahir" value={initialForm.tanggalLahir} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Tempat Lahir</label>
+                <input name="tempatLahir" value={initialForm.tempatLahir} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div className="col-span-1 md:col-span-2">
+                <label className="lbl">Domisili Saat Ini</label>
+                <textarea name="domisili" value={initialForm.domisili} onChange={changeInitialForm} className="inp" rows={2} required />
+              </div>
+              <div>
+                <label className="lbl">Provinsi</label>
+                <input name="provinsi" value={initialForm.provinsi} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Kabupaten/Kota</label>
+                <input name="kabKota" value={initialForm.kabKota} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Kecamatan</label>
+                <input name="kecamatan" value={initialForm.kecamatan} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Desa/Kelurahan</label>
+                <input name="desaKelurahan" value={initialForm.desaKelurahan} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Kode Pos</label>
+                <input name="kodePos" value={initialForm.kodePos} onChange={changeInitialFormNumeric} className="inp" required inputMode="numeric" />
+              </div>
+            </div>
+            <div className="flex justify-end pt-4 border-t">
+              <button onClick={nextStepFormToKtp} className="w-full md:w-auto bg-blue-700 text-white px-10 py-3 rounded-lg font-bold hover:bg-blue-800 transition shadow-lg transform active:scale-95">
+                Lanjut ke Foto KTP →
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* --- STEP 2: KTP --- */}
+        {step === 2 && (
           <section className="animate-fade-in">
             <div className="flex flex-col md:flex-row gap-6 mb-8 items-start">
               <div className="flex-1 w-full bg-blue-50 p-4 md:p-6 rounded-xl border border-blue-100 shadow-sm">
@@ -372,12 +521,12 @@ export default function InputDataPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t">
-                  <button
-                    onClick={nextStep}
-                    className="w-full md:w-auto bg-blue-700 text-white px-10 py-3 rounded-lg font-bold hover:bg-blue-800 transition shadow-lg transform active:scale-95"
-                  >
-                    Lanjut ke Upload KK →
+                <div className="flex justify-between md:justify-end gap-3 md:gap-4 pt-4 border-t">
+                  <button onClick={() => prevStep(1)} className="w-full md:w-auto bg-gray-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow active:scale-95">
+                    ← Kembali
+                  </button>
+                  <button onClick={nextStepKtpToKk} className="w-full md:w-auto bg-blue-700 text-white px-10 py-3 rounded-lg font-bold hover:bg-blue-800 transition shadow-lg transform active:scale-95">
+                    Lanjut ke KK →
                   </button>
                 </div>
               </div>
@@ -385,8 +534,8 @@ export default function InputDataPage() {
           </section>
         )}
 
-        {/* --- STEP 2: KK (IMAGE & PDF SUPPORT) --- */}
-        {step === 2 && (
+        {/* --- STEP 3: KK (IMAGE & PDF SUPPORT) --- */}
+        {step === 3 && (
           <section className="animate-fade-in">
             <div className="flex flex-col md:flex-row gap-6 mb-8 items-start">
               <div className="flex-1 w-full bg-green-50 p-4 md:p-6 rounded-xl border border-green-100 shadow-sm">
@@ -464,11 +613,11 @@ export default function InputDataPage() {
                 {/* TOMBOL MENUMPUK DI MOBILE (flex-col-reverse agar tombol simpan tetap di bawah atau order diatur) */}
                 <div className="flex flex-col md:flex-row gap-3 md:gap-4 pt-4 border-t">
                   <button
-                    onClick={prevStep}
+                    onClick={() => prevStep(2)}
                     className="order-2 md:order-1 flex-1 bg-gray-500 text-white py-3 md:py-4 rounded-lg font-bold hover:bg-gray-600 transition shadow active:scale-95"
                     type="button"
                   >
-                    ← Kembali (Edit KTP)
+                    ← Kembali (KTP)
                   </button>
                   <button
                     onClick={handleSubmitAll}

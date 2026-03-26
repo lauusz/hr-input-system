@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sistem Onboarding OCR",
-  description: "Aplikasi scan KTP dan KK otomatis",
+  title: "Input Data Karyawan",
+  description: "Aplikasi Input Data Karyawan",
 };
 
 export default function RootLayout({

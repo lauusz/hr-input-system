@@ -75,10 +75,11 @@ export async function POST(req: Request) {
 
     const ktp = allData?.ktp || {};
     const kk = allData?.kk || {};
+    const form = allData?.form || {};
 
     const nik = s(ktp?.nik);
     const noKK = s(kk?.noKK);
-    const pendidikanTerakhir = s(kk?.pendidikanTerakhir);
+    const pendidikanTerakhir = s(kk?.pendidikanTerakhir) || s(form?.pendidikanTerakhir);
 
     if (!nik || !noKK) {
       return NextResponse.json({ error: 'Data tidak valid (NIK / NoKK kosong)' }, { status: 400 });
@@ -104,24 +105,27 @@ export async function POST(req: Request) {
     const values = [
       [
         new Date().toLocaleString('id-ID'),
-
+        s(form?.namaLengkap),
+        s(form?.noHp),
+        s(form?.email),
+        s(form?.agama),
+        s(form?.namaBank),
+        s(form?.noRekening),
+        s(form?.pendidikanTerakhir),
+        s(form?.tanggalLahir),
+        s(form?.tempatLahir),
+        s(form?.domisili),
+        s(form?.provinsi),
+        s(form?.kabKota),
+        s(form?.kecamatan),
+        s(form?.desaKelurahan),
+        s(form?.kodePos),
         s(ktp?.nik),
         s(ktp?.nama),
-        s(ktp?.tempatLahir),
-        s(ktp?.tanggalLahir),
-        s(ktp?.jenisKelamin),
-        s(ktp?.alamat),
-        s(ktp?.rtRw),
-        s(ktp?.kelDesa),
-        s(ktp?.kecamatan),
-        s(ktp?.agama),
         s(ktp?.statusPerkawinan),
         s(ktp?.pekerjaan),
-        s(ktp?.kewarganegaraan),
-
         noKK,
-        pendidikanTerakhir,
-
+        s(form?.pendidikanTerakhir) || s(kk?.pendidikanTerakhir),
         linkKTP,
         linkKK,
       ],
@@ -131,7 +135,7 @@ export async function POST(req: Request) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:R',
+      range: 'Sheet1!A128',
       valueInputOption: 'USER_ENTERED',
       requestBody: { values },
     });
