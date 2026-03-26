@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     const values = [
       [
         new Date().toLocaleString('id-ID'),
-        s(form?.namaLengkap),
+        s(form?.namaLengkap), // dari Form Awal
         s(form?.noHp),
         s(form?.email),
         s(form?.agama),
@@ -120,10 +120,19 @@ export async function POST(req: Request) {
         s(form?.kecamatan),
         s(form?.desaKelurahan),
         s(form?.kodePos),
-        s(ktp?.nik),
+        s(ktp?.nik), // Mulai KTP
         s(ktp?.nama),
+        s(ktp?.tempatLahir),
+        s(ktp?.tanggalLahir),
+        s(ktp?.jenisKelamin),
+        s(ktp?.alamat),
+        s(ktp?.rtRw),
+        s(ktp?.kelDesa),
+        s(ktp?.kecamatan),
+        s(ktp?.agama),
         s(ktp?.statusPerkawinan),
         s(ktp?.pekerjaan),
+        s(ktp?.kewarganegaraan),
         noKK,
         s(form?.pendidikanTerakhir) || s(kk?.pendidikanTerakhir),
         linkKTP,
@@ -135,7 +144,7 @@ export async function POST(req: Request) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A128',
+      range: "'Input Data'!A2",
       valueInputOption: 'USER_ENTERED',
       requestBody: { values },
     });
