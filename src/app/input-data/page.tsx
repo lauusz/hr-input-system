@@ -87,6 +87,24 @@ const KTP_FIELD_LABELS: Record<keyof KTPData, string> = {
 const JENIS_KELAMIN_OPTIONS = ['LAKI-LAKI', 'PEREMPUAN'];
 const AGAMA_OPTIONS = ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'KEPERCAYAAN TERHADAP TUHAN YME'];
 const STATUS_PERKAWINAN_OPTIONS = ['BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', 'CERAI MATI'];
+const EDUCATION_OPTIONS = [
+  ['TIDAK / BELUM SEKOLAH', 'TIDAK / BELUM SEKOLAH'],
+  ['BELUM TAMAT SD/SEDERAJAT', 'BELUM TAMAT SD/SEDERAJAT'],
+  ['SD', 'TAMAT SD / SEDERAJAT'],
+  ['SLTP/SEDERAJAT', 'SLTP/SEDERAJAT'],
+  ['SLTA / SEDERAJAT', 'SLTA / SEDERAJAT'],
+  ['DIPLOMA I / II', 'DIPLOMA I / II'],
+  ['AKADEMI / DIPLOMA III / SARJANA MUDA', 'AKADEMI / DIPLOMA III / SARJANA MUDA'],
+  ['DIPLOMA IV / STRATA I', 'DIPLOMA IV / STRATA I'],
+  ['STRATA II', 'STRATA II'],
+  ['STRATA III', 'STRATA III'],
+];
+
+const STEP_ITEMS = [
+  { id: 1, label: 'Data Diri', shortLabel: 'Diri', caption: 'Profil awal' },
+  { id: 2, label: 'Data KTP', shortLabel: 'KTP', caption: 'Scan dan koreksi' },
+  { id: 3, label: 'Data KK', shortLabel: 'KK', caption: 'Finalisasi' },
+];
 
 const KTP_SELECT_OPTIONS: Partial<Record<keyof KTPData, string[]>> = {
   jenisKelamin: JENIS_KELAMIN_OPTIONS,
@@ -177,6 +195,7 @@ export default function InputDataPage() {
     desaKelurahan: '',
     kodePos: '',
   });
+  const currentStep = STEP_ITEMS.find((item) => item.id === step) ?? STEP_ITEMS[0];
 
   // --- HANDLERS KTP (IMAGE ONLY) ---
   const handleFileKTP = (e: ChangeEvent<HTMLInputElement>) => {
@@ -391,36 +410,65 @@ export default function InputDataPage() {
   };
 
   return (
-    // RESPONSIVE PADDING: p-3 (mobile) -> p-6 (desktop)
-    <main className="min-h-screen p-3 md:p-6 bg-gray-100 flex flex-col items-center">
-
-      {/* CARD CONTAINER: p-5 (mobile) -> p-8 (desktop) */}
-      <div className="w-full max-w-5xl bg-white p-5 md:p-8 rounded-xl shadow-xl">
-
-        {/* STEPPER */}
-        <div className="flex items-center justify-center mb-6 md:mb-8">
-          <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full font-bold transition-all ${step === 1 ? 'bg-blue-600 text-white scale-110' : 'bg-green-500 text-white'}`}>
-            1
+    <main className="min-h-dvh bg-slate-100 px-3 py-4 text-slate-950 sm:px-5 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <header className="mb-3 rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm sm:mb-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Input Data Karyawan</p>
+              <h1 className="mt-1 text-xl font-extrabold text-slate-950 sm:text-2xl">
+                {currentStep.label}
+              </h1>
+            </div>
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700">
+              Langkah {step} dari 3
+            </div>
           </div>
-          <div className={`w-10 md:w-16 h-1 transition-all ${step >= 2 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-          <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full font-bold transition-all ${step === 2 ? 'bg-blue-600 text-white scale-110' : step === 3 ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}>
-            2
-          </div>
-          <div className={`w-10 md:w-16 h-1 transition-all ${step === 3 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-          <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full font-bold transition-all ${step === 3 ? 'bg-blue-600 text-white scale-110' : 'bg-gray-300 text-gray-500'}`}>
-            3
-          </div>
-        </div>
+        </header>
 
-        <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-center text-gray-800">
-          {step === 1 ? 'Langkah 1: Isi Form Awal' : step === 2 ? 'Langkah 2: Input Data KTP' : 'Langkah 3: Input Data KK'}
-        </h1>
+        <nav className="mb-3 grid grid-cols-3 gap-2 sm:mb-4 sm:gap-3" aria-label="Progress form">
+          {STEP_ITEMS.map((item) => {
+            const isActive = step === item.id;
+            const isDone = step > item.id;
+
+            return (
+              <div
+                key={item.id}
+                className={`rounded-lg border px-3 py-3 transition ${
+                  isActive
+                    ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                    : isDone
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-slate-200 bg-white text-slate-500'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sm font-extrabold ${
+                    isActive ? 'bg-white text-blue-700' : isDone ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {item.id}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-extrabold">
+                      <span className="sm:hidden">{item.shortLabel}</span>
+                      <span className="hidden sm:inline">{item.label}</span>
+                    </p>
+                    <p className={`hidden truncate text-xs sm:block ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>{item.caption}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </nav>
 
         {/* --- STEP 1: INITIAL FORM --- */}
         {step === 1 && (
-          <section className="animate-fade-in animate-slide-up bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm mb-8">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">📝 Form Data Diri</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-6">
+          <section className="section-panel animate-fade-in animate-slide-up">
+            <div className="section-head">
+              <h2>Form Data Diri</h2>
+              <span>{currentStep.caption}</span>
+            </div>
+            <div className="form-grid mb-6">
               <div className="col-span-1 md:col-span-2">
                 <label className="lbl">Nama Lengkap</label>
                 <input name="namaLengkap" value={initialForm.namaLengkap} onChange={changeInitialForm} className="inp" required />
@@ -437,7 +485,7 @@ export default function InputDataPage() {
                 <label className="lbl">Agama</label>
                 <select name="agama" value={initialForm.agama} onChange={changeInitialForm} className="inp cursor-pointer" required>
                   <option value="">-- Pilih --</option>
-                  {['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'KEPERCAYAAN TERHADAP TUHAN YME'].map(a => (
+                  {AGAMA_OPTIONS.map(a => (
                     <option key={a} value={a}>{a}</option>
                   ))}
                 </select>
@@ -454,16 +502,9 @@ export default function InputDataPage() {
                 <label className="lbl">Pendidikan Terakhir</label>
                 <select name="pendidikanTerakhir" value={initialForm.pendidikanTerakhir} onChange={changeInitialForm} className="inp cursor-pointer" required>
                   <option value="">-- Pilih --</option>
-                  <option value="TIDAK / BELUM SEKOLAH">TIDAK / BELUM SEKOLAH</option>
-                  <option value="BELUM TAMAT SD/SEDERAJAT">BELUM TAMAT SD/SEDERAJAT</option>
-                  <option value="SD">TAMAT SD / SEDERAJAT</option>
-                  <option value="SLTP/SEDERAJAT">SLTP/SEDERAJAT</option>
-                  <option value="SLTA / SEDERAJAT">SLTA / SEDERAJAT</option>
-                  <option value="DIPLOMA I / II">DIPLOMA I / II</option>
-                  <option value="AKADEMI / DIPLOMA III / SARJANA MUDA">AKADEMI / DIPLOMA III / SARJANA MUDA</option>
-                  <option value="DIPLOMA IV / STRATA I">DIPLOMA IV / STRATA I</option>
-                  <option value="STRATA II">STRATA II</option>
-                  <option value="STRATA III">STRATA III</option>
+                  {EDUCATION_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -503,9 +544,9 @@ export default function InputDataPage() {
                 <input name="noBpjsTk" value={initialForm.noBpjsTk} onChange={changeInitialFormNumeric} className="inp" inputMode="numeric" />
               </div>
             </div>
-            <div className="flex justify-end pt-4 border-t">
-              <button onClick={nextStepFormToKtp} className="w-full md:w-auto bg-blue-700 text-white px-10 py-3 rounded-lg font-bold hover:bg-blue-800 transition shadow-lg transform active:scale-95">
-                Lanjut ke Foto KTP →
+            <div className="mobile-action-bar justify-end">
+              <button onClick={nextStepFormToKtp} className="btn btn-primary w-full md:w-auto">
+                Lanjut ke Foto KTP
               </button>
             </div>
           </section>
@@ -513,41 +554,41 @@ export default function InputDataPage() {
 
         {/* --- STEP 2: KTP --- */}
         {step === 2 && (
-          <section className="animate-fade-in">
-            <div className="flex flex-col md:flex-row gap-6 mb-8 items-start">
-              <div className="flex-1 w-full bg-blue-50 p-4 md:p-6 rounded-xl border border-blue-100 shadow-sm">
-                <label className="block font-semibold text-blue-900 mb-3">Upload Foto KTP</label>
+          <section className="animate-fade-in space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+              <div className="upload-panel upload-panel-blue">
+                <label className="upload-label">Upload Foto KTP</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleFileKTP}
-                  className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-white file:text-blue-700 file:border-0 hover:file:bg-blue-100 cursor-pointer"
+                  className="file-input"
                   required
                 />
                 <button
                   onClick={uploadKTP}
                   disabled={!fileKTP || loadingKTP}
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 disabled:bg-gray-400 transition shadow-md active:scale-95"
+                  className="btn btn-primary w-full"
                 >
-                  {loadingKTP ? '⏳ Sedang Memproses...' : '⬆️ Unggah KTP Sekarang'}
+                  {loadingKTP ? 'Sedang Memproses...' : 'Unggah KTP Sekarang'}
                 </button>
               </div>
 
               {previewKTP && (
-                <div className="w-full md:w-1/3 h-48 md:h-56 relative border rounded-lg bg-gray-200 shadow-inner overflow-hidden">
+                <div className="relative h-48 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-inner sm:h-56 lg:h-full lg:min-h-56">
                   <Image src={previewKTP} alt="Preview KTP" fill style={{ objectFit: 'contain' }} />
                 </div>
               )}
             </div>
 
             {showKtpForm && (
-              <div className="animate-slide-up bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2 flex flex-col md:flex-row md:items-center">
-                  <span>📝 Data KTP</span>
-                  <span className="text-xs font-normal md:ml-2 text-gray-500 mt-1 md:mt-0">(Silakan koreksi jika ada yang salah)</span>
-                </h3>
+              <div className="section-panel animate-slide-up">
+                <div className="section-head">
+                  <h2>Data KTP</h2>
+                  <span>Koreksi hasil OCR</span>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-6">
+                <div className="form-grid mb-6">
                   {/* Inputs KTP (Sama seperti sebelumnya) */}
                   <div className="col-span-1 md:col-span-2">
                     <label className="lbl">NIK</label>
@@ -631,12 +672,12 @@ export default function InputDataPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between md:justify-end gap-3 md:gap-4 pt-4 border-t">
-                  <button onClick={() => prevStep(1)} className="w-full md:w-auto bg-gray-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow active:scale-95">
-                    ← Kembali
+                <div className="mobile-action-bar justify-between md:justify-end">
+                  <button onClick={() => prevStep(1)} className="btn btn-secondary w-full md:w-auto">
+                    Kembali
                   </button>
-                  <button onClick={nextStepKtpToKk} className="w-full md:w-auto bg-blue-700 text-white px-10 py-3 rounded-lg font-bold hover:bg-blue-800 transition shadow-lg transform active:scale-95">
-                    Lanjut ke KK →
+                  <button onClick={nextStepKtpToKk} className="btn btn-primary w-full md:w-auto">
+                    Lanjut ke KK
                   </button>
                 </div>
               </div>
@@ -646,35 +687,34 @@ export default function InputDataPage() {
 
         {/* --- STEP 3: KK (IMAGE & PDF SUPPORT) --- */}
         {step === 3 && (
-          <section className="animate-fade-in">
-            <div className="flex flex-col md:flex-row gap-6 mb-8 items-start">
-              <div className="flex-1 w-full bg-green-50 p-4 md:p-6 rounded-xl border border-green-100 shadow-sm">
-                <label className="block font-semibold text-green-900 mb-3">Upload KK (Foto / PDF)</label>
+          <section className="animate-fade-in space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+              <div className="upload-panel upload-panel-green">
+                <label className="upload-label">Upload KK (Foto / PDF)</label>
 
                 {/* ACCEPT IMAGE + PDF */}
                 <input
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={handleFileKK}
-                  className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-white file:text-green-700 file:border-0 hover:file:bg-green-100 cursor-pointer"
+                  className="file-input"
                   required
                 />
 
                 <button
                   onClick={uploadKK}
                   disabled={!fileKK || loadingKK}
-                  className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 disabled:bg-gray-400 transition shadow-md active:scale-95"
+                  className="btn btn-success w-full"
                 >
-                  {loadingKK ? '⏳ Sedang Memproses...' : '⬆️ Unggah KK Sekarang'}
+                  {loadingKK ? 'Sedang Memproses...' : 'Unggah KK Sekarang'}
                 </button>
               </div>
 
               {/* LOGIC PREVIEW KK (Handle PDF UI vs Image UI) */}
               {(previewKK || isPdfKK) && (
-                <div className="w-full md:w-1/3 h-48 md:h-56 relative border rounded-lg bg-gray-200 shadow-inner overflow-hidden flex items-center justify-center">
+                <div className="relative flex h-48 w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-inner sm:h-56 lg:h-full lg:min-h-56">
                   {isPdfKK ? (
                     <div className="text-center p-4">
-                      <div className="text-5xl mb-2">📄</div>
                       <p className="text-sm font-bold text-gray-600 break-all px-2">{fileKK?.name}</p>
                       <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded mt-2 inline-block font-semibold">Format PDF</span>
                     </div>
@@ -686,8 +726,11 @@ export default function InputDataPage() {
             </div>
 
             {showKkForm && (
-              <div className="animate-slide-up bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">📝 Data KK</h3>
+              <div className="section-panel animate-slide-up">
+                <div className="section-head">
+                  <h2>Data KK</h2>
+                  <span>Nomor keluarga</span>
+                </div>
 
                 <div className="grid grid-cols-1 gap-5 mb-8">
                   <div>
@@ -706,36 +749,29 @@ export default function InputDataPage() {
                       required
                     >
                       <option value="">-- Pilih --</option>
-                      <option value="TIDAK / BELUM SEKOLAH">TIDAK / BELUM SEKOLAH</option>
-                      <option value="BELUM TAMAT SD/SEDERAJAT">BELUM TAMAT SD/SEDERAJAT</option>
-                      <option value="SD">TAMAT SD / SEDERAJAT</option>
-                      <option value="SLTP/SEDERAJAT">SLTP/SEDERAJAT</option>
-                      <option value="SLTA / SEDERAJAT">SLTA / SEDERAJAT</option>
-                      <option value="DIPLOMA I / II">DIPLOMA I / II</option>
-                      <option value="AKADEMI / DIPLOMA III / SARJANA MUDA">AKADEMI / DIPLOMA III / SARJANA MUDA</option>
-                      <option value="DIPLOMA IV / STRATA I">DIPLOMA IV / STRATA I</option>
-                      <option value="STRATA II">STRATA II</option>
-                      <option value="STRATA III">STRATA III</option>
+                      {EDUCATION_OPTIONS.map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
                 {/* TOMBOL MENUMPUK DI MOBILE (flex-col-reverse agar tombol simpan tetap di bawah atau order diatur) */}
-                <div className="flex flex-col md:flex-row gap-3 md:gap-4 pt-4 border-t">
+                <div className="mobile-action-bar flex-col md:flex-row">
                   <button
                     onClick={() => prevStep(2)}
-                    className="order-2 md:order-1 flex-1 bg-gray-500 text-white py-3 md:py-4 rounded-lg font-bold hover:bg-gray-600 transition shadow active:scale-95"
+                    className="btn btn-secondary order-2 flex-1 md:order-1"
                     type="button"
                   >
-                    ← Kembali (KTP)
+                    Kembali ke KTP
                   </button>
                   <button
                     onClick={handleSubmitAll}
                     disabled={isSubmitting || !kkHeader.noKK || !kkHeader.pendidikanTerakhir}
-                    className="order-1 md:order-2 flex-[2] bg-indigo-700 text-white py-3 md:py-4 rounded-lg font-bold shadow-lg hover:bg-indigo-800 disabled:bg-gray-400 transition transform active:scale-95"
+                    className="btn btn-primary order-1 flex-[2] md:order-2"
                     type="button"
                   >
-                    {isSubmitting ? '🚀 Sedang Mengirim Data...' : '✓ SIMPAN SEMUA DATA'}
+                    {isSubmitting ? 'Sedang Mengirim Data...' : 'Simpan Semua Data'}
                   </button>
                 </div>
               </div>
@@ -745,16 +781,226 @@ export default function InputDataPage() {
 
         {/* CSS: Font size 16px pada .inp penting agar iOS tidak auto-zoom saat input diklik */}
         <style jsx>{`
-          .lbl { display: block; font-size: 0.85rem; font-weight: 700; color: #374151; margin-bottom: 6px; }
-          .inp { width: 100%; padding: 12px 12px; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; color: #111827; font-weight: 600; font-size: 16px; transition: all 0.2s; }
-          .inp:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12); }
-          .inp-error { border-color: #dc2626; background: #fef2f2; }
-          .inp-error:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); }
-          .field-error { margin-top: 6px; font-size: 0.75rem; font-weight: 700; color: #dc2626; }
-          .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-          .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-          @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+          /* Hallmark - macrostructure: Mobile-first workflow - tone: quiet operational - anchor hue: blue */
+          .section-panel {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+          }
+          .section-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .section-head h2 {
+            margin: 0;
+            color: #0f172a;
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.25;
+          }
+          .section-head span {
+            flex-shrink: 0;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 6px 8px;
+          }
+          .form-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 16px;
+          }
+          .lbl {
+            display: block;
+            color: #334155;
+            font-size: 0.8rem;
+            font-weight: 800;
+            line-height: 1.25;
+            margin-bottom: 6px;
+          }
+          .inp {
+            width: 100%;
+            min-height: 48px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 16px;
+            font-weight: 650;
+            line-height: 1.4;
+            padding: 12px;
+            transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+          }
+          textarea.inp {
+            min-height: 92px;
+            resize: vertical;
+          }
+          .inp:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+          }
+          .inp-error {
+            border-color: #dc2626;
+            background: #fef2f2;
+          }
+          .inp-error:focus {
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+          }
+          .field-error {
+            margin-top: 6px;
+            color: #dc2626;
+            font-size: 0.75rem;
+            font-weight: 800;
+          }
+          .upload-panel {
+            border: 1px solid #dbeafe;
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+          }
+          .upload-panel-blue {
+            border-color: #bfdbfe;
+            background: #eff6ff;
+          }
+          .upload-panel-green {
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+          }
+          .upload-label {
+            display: block;
+            color: #0f172a;
+            font-size: 0.95rem;
+            font-weight: 850;
+            margin-bottom: 12px;
+          }
+          .file-input {
+            display: block;
+            width: 100%;
+            margin-bottom: 12px;
+            color: #475569;
+            font-size: 0.875rem;
+            font-weight: 700;
+          }
+          .file-input::file-selector-button {
+            border: 0;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #1d4ed8;
+            cursor: pointer;
+            font-weight: 850;
+            margin-right: 12px;
+            padding: 10px 12px;
+          }
+          .btn {
+            min-height: 48px;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 850;
+            padding: 12px 18px;
+            transition: transform 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+          }
+          .btn:hover {
+            transform: translateY(-1px);
+          }
+          .btn:active {
+            transform: translateY(0);
+          }
+          .btn:focus-visible {
+            outline: 3px solid rgba(37, 99, 235, 0.32);
+            outline-offset: 2px;
+          }
+          .btn:disabled {
+            background: #cbd5e1;
+            color: #64748b;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+          }
+          .btn-primary {
+            background: #1d4ed8;
+            color: #ffffff;
+            box-shadow: 0 10px 18px rgba(29, 78, 216, 0.18);
+          }
+          .btn-primary:hover {
+            background: #1e40af;
+          }
+          .btn-success {
+            background: #15803d;
+            color: #ffffff;
+            box-shadow: 0 10px 18px rgba(21, 128, 61, 0.16);
+          }
+          .btn-success:hover {
+            background: #166534;
+          }
+          .btn-secondary {
+            background: #475569;
+            color: #ffffff;
+          }
+          .btn-secondary:hover {
+            background: #334155;
+          }
+          .mobile-action-bar {
+            display: flex;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+          }
+          .animate-fade-in {
+            animation: fadeIn 0.24s ease-out;
+          }
+          .animate-slide-up {
+            animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          @media (max-width: 767px) {
+            .section-head {
+              align-items: flex-start;
+              flex-direction: column;
+            }
+            .section-head span {
+              max-width: 100%;
+            }
+          }
+          @media (min-width: 768px) {
+            .section-panel {
+              padding: 24px;
+            }
+            .form-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 18px 20px;
+            }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .animate-fade-in,
+            .animate-slide-up,
+            .btn,
+            .inp {
+              animation: none;
+              transition-duration: 0.01ms;
+            }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
         `}</style>
       </div>
     </main>
