@@ -29,6 +29,11 @@ function s(v: any) {
   return typeof v === 'string' ? v.trim() : '';
 }
 
+function sheetText(v: any) {
+  const value = s(v).replace(/^'+/, '');
+  return value ? `'${value}` : '';
+}
+
 async function uploadToGCS(file: File, filename: string, credentials: any): Promise<string> {
   const storage = new Storage({ credentials });
 
@@ -110,7 +115,7 @@ export async function POST(req: Request) {
         s(form?.email),
         s(form?.agama),
         s(form?.namaBank),
-        s(form?.noRekening),
+        sheetText(form?.noRekening),
         s(form?.pendidikanTerakhir),
         s(form?.tanggalLahir),
         s(form?.tempatLahir),
@@ -135,6 +140,7 @@ export async function POST(req: Request) {
         s(ktp?.kewarganegaraan),
         noKK,
         s(form?.pendidikanTerakhir) || s(kk?.pendidikanTerakhir),
+        s(form?.noBpjsTk),
         linkKTP,
         linkKK,
       ],

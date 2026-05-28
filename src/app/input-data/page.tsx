@@ -29,6 +29,7 @@ interface KKHeader {
 interface InitialFormData {
   namaLengkap: string;
   noHp: string;
+  noBpjsTk: string;
   email: string;
   agama: string;
   namaBank: string;
@@ -94,6 +95,7 @@ export default function InputDataPage() {
   const [initialForm, setInitialForm] = useState<InitialFormData>({
     namaLengkap: '',
     noHp: '',
+    noBpjsTk: '',
     email: '',
     agama: '',
     namaBank: '',
@@ -405,6 +407,10 @@ export default function InputDataPage() {
               <div>
                 <label className="lbl">Kode Pos</label>
                 <input name="kodePos" value={initialForm.kodePos} onChange={changeInitialFormNumeric} className="inp" required inputMode="numeric" />
+              </div>
+              <div>
+                <label className="lbl">Nomor BPJS TK (jika masih terdapat ada saldo JHT)</label>
+                <input name="noBpjsTk" value={initialForm.noBpjsTk} onChange={changeInitialFormNumeric} className="inp" inputMode="numeric" />
               </div>
             </div>
             <div className="flex justify-end pt-4 border-t">
