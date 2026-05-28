@@ -46,8 +46,88 @@ interface InitialFormData {
 }
 
 // --- HELPER ---
+const EMPTY_KTP_DATA: KTPData = {
+  nik: '',
+  nama: '',
+  tempatLahir: '',
+  tanggalLahir: '',
+  jenisKelamin: '',
+  alamat: '',
+  rtRw: '',
+  kelDesa: '',
+  kecamatan: '',
+  agama: '',
+  statusPerkawinan: '',
+  pekerjaan: '',
+  kewarganegaraan: '',
+};
+
+const REQUIRED_KTP_FIELDS: (keyof KTPData)[] = [
+  'nik', 'nama', 'tempatLahir', 'tanggalLahir', 'jenisKelamin',
+  'alamat', 'rtRw', 'kelDesa', 'kecamatan', 'agama',
+  'statusPerkawinan', 'pekerjaan', 'kewarganegaraan',
+];
+
+const KTP_FIELD_LABELS: Record<keyof KTPData, string> = {
+  nik: 'NIK',
+  nama: 'Nama Lengkap',
+  tempatLahir: 'Tempat Lahir',
+  tanggalLahir: 'Tanggal Lahir',
+  jenisKelamin: 'Jenis Kelamin',
+  alamat: 'Alamat',
+  rtRw: 'RT/RW',
+  kelDesa: 'Kel/Desa',
+  kecamatan: 'Kecamatan',
+  agama: 'Agama',
+  statusPerkawinan: 'Status Perkawinan',
+  pekerjaan: 'Pekerjaan',
+  kewarganegaraan: 'Kewarganegaraan',
+};
+
+const JENIS_KELAMIN_OPTIONS = ['LAKI-LAKI', 'PEREMPUAN'];
+const AGAMA_OPTIONS = ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'KEPERCAYAAN TERHADAP TUHAN YME'];
+const STATUS_PERKAWINAN_OPTIONS = ['BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', 'CERAI MATI'];
+
+const KTP_SELECT_OPTIONS: Partial<Record<keyof KTPData, string[]>> = {
+  jenisKelamin: JENIS_KELAMIN_OPTIONS,
+  agama: AGAMA_OPTIONS,
+  statusPerkawinan: STATUS_PERKAWINAN_OPTIONS,
+};
+
 function isFilled(v: any) {
-  return typeof v === 'string' && v.trim().length > 0;
+  if (typeof v !== 'string') return false;
+
+  const value = v.trim();
+  if (!value) return false;
+
+  return !['-', '--', '---', 'N/A', 'NA', 'NULL', 'UNDEFINED', 'TIDAK DITEMUKAN', 'TIDAK TERBACA'].includes(value.toUpperCase());
+}
+
+function isValidKtpField(field: keyof KTPData, value: string) {
+  if (!isFilled(value)) return false;
+
+  const options = KTP_SELECT_OPTIONS[field];
+  if (!options) return true;
+
+  return options.includes(value.trim().toUpperCase());
+}
+
+function normalizeKtpData(data: Partial<KTPData> | null | undefined): KTPData {
+  return {
+    ...EMPTY_KTP_DATA,
+    ...Object.fromEntries(
+      Object.entries(data || {}).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : ''])
+    ),
+  };
+}
+
+function buildKtpErrors(data: KTPData): Partial<Record<keyof KTPData, string>> {
+  return REQUIRED_KTP_FIELDS.reduce<Partial<Record<keyof KTPData, string>>>((acc, field) => {
+    if (!isValidKtpField(field, data[field])) {
+      acc[field] = `${KTP_FIELD_LABELS[field]} wajib diisi.`;
+    }
+    return acc;
+  }, {});
 }
 
 export default function InputDataPage() {
@@ -71,21 +151,8 @@ export default function InputDataPage() {
   const [isPdfKK, setIsPdfKK] = useState(false); // Penanda khusus jika KK adalah PDF
 
   // Data States
-  const [ktpData, setKtpData] = useState<KTPData>({
-    nik: '',
-    nama: '',
-    tempatLahir: '',
-    tanggalLahir: '',
-    jenisKelamin: '',
-    alamat: '',
-    rtRw: '',
-    kelDesa: '',
-    kecamatan: '',
-    agama: '',
-    statusPerkawinan: '',
-    pekerjaan: '',
-    kewarganegaraan: '',
-  });
+  const [ktpData, setKtpData] = useState<KTPData>(EMPTY_KTP_DATA);
+  const [ktpErrors, setKtpErrors] = useState<Partial<Record<keyof KTPData, string>>>({});
 
   const [kkHeader, setKkHeader] = useState<KKHeader>({
     noKK: '',
@@ -118,6 +185,7 @@ export default function InputDataPage() {
       setFileKTP(f);
       setPreviewKTP(URL.createObjectURL(f));
       setShowKtpForm(false);
+      setKtpErrors({});
     }
   };
 
@@ -132,7 +200,9 @@ export default function InputDataPage() {
       const res = await fetch('/api/scan-ktp', { method: 'POST', body: fd });
       const json = await res.json();
       if (res.ok) {
-        setKtpData(json.data);
+        const nextKtpData = normalizeKtpData(json.data);
+        setKtpData(nextKtpData);
+        setKtpErrors(buildKtpErrors(nextKtpData));
         setShowKtpForm(true);
       } else {
         alert('Gagal Unggah KTP: ' + json.error);
@@ -196,8 +266,28 @@ export default function InputDataPage() {
     const onlyNums = e.target.value.replace(/[^0-9]/g, '');
     setInitialForm({ ...initialForm, [e.target.name]: onlyNums });
   };
-  const changeKTP = (e: any) => setKtpData({ ...ktpData, [e.target.name]: e.target.value });
+  const changeKTP = (e: any) => {
+    const field = e.target.name as keyof KTPData;
+    const value = e.target.value;
+
+    setKtpData({ ...ktpData, [field]: value });
+    setKtpErrors((prev) => {
+      if (!prev[field] || !isValidKtpField(field, value)) return prev;
+
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
   const changeKKHead = (e: any) => setKkHeader({ ...kkHeader, [e.target.name]: e.target.value });
+
+  const ktpInputClass = (field: keyof KTPData, extra = '') => {
+    return `inp${extra ? ` ${extra}` : ''}${ktpErrors[field] ? ' inp-error' : ''}`;
+  };
+
+  const ktpErrorText = (field: keyof KTPData) => {
+    return ktpErrors[field] ? <p className="field-error">{ktpErrors[field]}</p> : null;
+  };
 
   const nextStepFormToKtp = () => {
     // Basic validation for initial form
@@ -217,17 +307,17 @@ export default function InputDataPage() {
   };
 
   const nextStepKtpToKk = () => {
-    const requiredKtpFields: (keyof KTPData)[] = [
-      'nik', 'nama', 'tempatLahir', 'tanggalLahir', 'jenisKelamin',
-      'alamat', 'rtRw', 'kelDesa', 'kecamatan', 'agama',
-      'statusPerkawinan', 'pekerjaan', 'kewarganegaraan',
-    ];
+    const errors = buildKtpErrors(ktpData);
+    const firstErrorField = REQUIRED_KTP_FIELDS.find((field) => errors[field]);
 
-    for (const key of requiredKtpFields) {
-      if (!isFilled(ktpData[key])) {
-        alert(`Field KTP "${key}" wajib diisi.`);
-        return;
-      }
+    if (firstErrorField) {
+      setKtpErrors(errors);
+      alert(`Field KTP "${KTP_FIELD_LABELS[firstErrorField]}" wajib diisi.`);
+      setTimeout(() => {
+        const el = document.querySelector(`[name="${firstErrorField}"]`) as HTMLElement | null;
+        el?.focus();
+      }, 0);
+      return;
     }
 
     if (!fileKTP) {
@@ -461,69 +551,83 @@ export default function InputDataPage() {
                   {/* Inputs KTP (Sama seperti sebelumnya) */}
                   <div className="col-span-1 md:col-span-2">
                     <label className="lbl">NIK</label>
-                    <input name="nik" value={ktpData.nik} onChange={changeKTP} className="inp font-bold tracking-wide" required inputMode="numeric" />
+                    <input name="nik" value={ktpData.nik} onChange={changeKTP} className={ktpInputClass('nik', 'font-bold tracking-wide')} required inputMode="numeric" />
+                    {ktpErrorText('nik')}
                   </div>
                   <div className="col-span-1 md:col-span-2">
                     <label className="lbl">Nama Lengkap</label>
-                    <input name="nama" value={ktpData.nama} onChange={changeKTP} className="inp" required />
+                    <input name="nama" value={ktpData.nama} onChange={changeKTP} className={ktpInputClass('nama')} required />
+                    {ktpErrorText('nama')}
                   </div>
                   <div>
                     <label className="lbl">Tempat Lahir</label>
-                    <input name="tempatLahir" value={ktpData.tempatLahir} onChange={changeKTP} className="inp" required />
+                    <input name="tempatLahir" value={ktpData.tempatLahir} onChange={changeKTP} className={ktpInputClass('tempatLahir')} required />
+                    {ktpErrorText('tempatLahir')}
                   </div>
                   <div>
                     <label className="lbl">Tanggal Lahir</label>
-                    <input name="tanggalLahir" value={ktpData.tanggalLahir} onChange={changeKTP} className="inp cursor-pointer" required />
+                    <input name="tanggalLahir" value={ktpData.tanggalLahir} onChange={changeKTP} className={ktpInputClass('tanggalLahir', 'cursor-pointer')} required />
+                    {ktpErrorText('tanggalLahir')}
                   </div>
                   <div>
                     <label className="lbl">Jenis Kelamin</label>
-                    <select name="jenisKelamin" value={ktpData.jenisKelamin} onChange={changeKTP} className="inp cursor-pointer" required>
+                    <select name="jenisKelamin" value={ktpData.jenisKelamin} onChange={changeKTP} className={ktpInputClass('jenisKelamin', 'cursor-pointer')} required>
                       <option value="">-- Pilih --</option>
-                      <option value="LAKI-LAKI">LAKI-LAKI</option>
-                      <option value="PEREMPUAN">PEREMPUAN</option>
+                      {JENIS_KELAMIN_OPTIONS.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
                     </select>
+                    {ktpErrorText('jenisKelamin')}
                   </div>
                   <div>
                     <label className="lbl">Agama</label>
-                    <select name="agama" value={ktpData.agama} onChange={changeKTP} className="inp cursor-pointer" required>
+                    <select name="agama" value={ktpData.agama} onChange={changeKTP} className={ktpInputClass('agama', 'cursor-pointer')} required>
                       <option value="">-- Pilih --</option>
-                      {['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'KEPERCAYAAN TERHADAP TUHAN YME'].map(a => (
+                      {AGAMA_OPTIONS.map(a => (
                         <option key={a} value={a}>{a}</option>
                       ))}
                     </select>
+                    {ktpErrorText('agama')}
                   </div>
                   <div>
                     <label className="lbl">Status Perkawinan</label>
-                    <select name="statusPerkawinan" value={ktpData.statusPerkawinan} onChange={changeKTP} className="inp cursor-pointer" required>
+                    <select name="statusPerkawinan" value={ktpData.statusPerkawinan} onChange={changeKTP} className={ktpInputClass('statusPerkawinan', 'cursor-pointer')} required>
                       <option value="">-- Pilih --</option>
-                      {['BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', 'CERAI MATI'].map(s => (
+                      {STATUS_PERKAWINAN_OPTIONS.map(s => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
+                    {ktpErrorText('statusPerkawinan')}
                   </div>
                   <div>
                     <label className="lbl">Pekerjaan</label>
-                    <input name="pekerjaan" value={ktpData.pekerjaan} onChange={changeKTP} className="inp" required />
+                    <input name="pekerjaan" value={ktpData.pekerjaan} onChange={changeKTP} className={ktpInputClass('pekerjaan')} required />
+                    {ktpErrorText('pekerjaan')}
                   </div>
                   <div className="col-span-1 md:col-span-2 mt-2">
                     <label className="lbl">Alamat (Sesuai KTP)</label>
-                    <textarea name="alamat" value={ktpData.alamat} onChange={changeKTP} className="inp" rows={2} required />
+                    <textarea name="alamat" value={ktpData.alamat} onChange={changeKTP} className={ktpInputClass('alamat')} rows={2} required />
+                    {ktpErrorText('alamat')}
                   </div>
                   <div>
                     <label className="lbl">RT/RW</label>
-                    <input name="rtRw" value={ktpData.rtRw} onChange={changeKTP} className="inp" required />
+                    <input name="rtRw" value={ktpData.rtRw} onChange={changeKTP} className={ktpInputClass('rtRw')} required />
+                    {ktpErrorText('rtRw')}
                   </div>
                   <div>
                     <label className="lbl">Kel/Desa</label>
-                    <input name="kelDesa" value={ktpData.kelDesa} onChange={changeKTP} className="inp" required />
+                    <input name="kelDesa" value={ktpData.kelDesa} onChange={changeKTP} className={ktpInputClass('kelDesa')} required />
+                    {ktpErrorText('kelDesa')}
                   </div>
                   <div>
                     <label className="lbl">Kecamatan</label>
-                    <input name="kecamatan" value={ktpData.kecamatan} onChange={changeKTP} className="inp" required />
+                    <input name="kecamatan" value={ktpData.kecamatan} onChange={changeKTP} className={ktpInputClass('kecamatan')} required />
+                    {ktpErrorText('kecamatan')}
                   </div>
                   <div>
                     <label className="lbl">Kewarganegaraan</label>
-                    <input name="kewarganegaraan" value={ktpData.kewarganegaraan} onChange={changeKTP} className="inp" required />
+                    <input name="kewarganegaraan" value={ktpData.kewarganegaraan} onChange={changeKTP} className={ktpInputClass('kewarganegaraan')} required />
+                    {ktpErrorText('kewarganegaraan')}
                   </div>
                 </div>
 
@@ -644,6 +748,9 @@ export default function InputDataPage() {
           .lbl { display: block; font-size: 0.85rem; font-weight: 700; color: #374151; margin-bottom: 6px; }
           .inp { width: 100%; padding: 12px 12px; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; color: #111827; font-weight: 600; font-size: 16px; transition: all 0.2s; }
           .inp:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12); }
+          .inp-error { border-color: #dc2626; background: #fef2f2; }
+          .inp-error:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); }
+          .field-error { margin-top: 6px; font-size: 0.75rem; font-weight: 700; color: #dc2626; }
           .animate-fade-in { animation: fadeIn 0.4s ease-out; }
           .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
