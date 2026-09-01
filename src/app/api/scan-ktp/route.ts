@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const prompt = buildKtpPrompt(fullText);
 
     const completion = await groq.chat.completions.create({
-      model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+      model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
       messages: [
         {
           role: 'user',
