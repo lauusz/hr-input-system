@@ -3,6 +3,7 @@
 import { useState, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { isDuplicatePhoneNumber } from '@/lib/contact-phone';
 
 // --- INTERFACES ---
 interface KTPData {
@@ -29,6 +30,8 @@ interface KKHeader {
 interface InitialFormData {
   namaLengkap: string;
   noHp: string;
+  hubunganKeluarga: string;
+  noKeluargaDihubungi: string;
   noBpjsTk: string;
   email: string;
   agama: string;
@@ -180,6 +183,8 @@ export default function InputDataPage() {
   const [initialForm, setInitialForm] = useState<InitialFormData>({
     namaLengkap: '',
     noHp: '',
+    hubunganKeluarga: '',
+    noKeluargaDihubungi: '',
     noBpjsTk: '',
     email: '',
     agama: '',
@@ -313,7 +318,7 @@ export default function InputDataPage() {
     const requiredInitials: (keyof InitialFormData)[] = [
       'namaLengkap', 'noHp', 'email', 'agama', 'namaBank', 'noRekening', 'pendidikanTerakhir', 
       'tanggalLahir', 'tempatLahir', 'domisili', 'provinsi', 
-      'kabKota', 'kecamatan', 'desaKelurahan', 'kodePos'
+      'kabKota', 'kecamatan', 'desaKelurahan', 'kodePos', 'hubunganKeluarga', 'noKeluargaDihubungi'
     ];
     for (const key of requiredInitials) {
       if (!isFilled(initialForm[key])) {
@@ -321,6 +326,12 @@ export default function InputDataPage() {
         return;
       }
     }
+
+    if (isDuplicatePhoneNumber(initialForm.noHp, initialForm.noKeluargaDihubungi)) {
+      alert('Nomor keluarga yang dapat dihubungi tidak boleh sama dengan No HP.');
+      return;
+    }
+
     setStep(2);
     window.scrollTo(0, 0);
   };
@@ -542,6 +553,17 @@ export default function InputDataPage() {
               <div>
                 <label className="lbl">Nomor BPJS TK (jika masih terdapat ada saldo JHT)</label>
                 <input name="noBpjsTk" value={initialForm.noBpjsTk} onChange={changeInitialFormNumeric} className="inp" inputMode="numeric" />
+              </div>
+              <div className="col-span-1 mt-2 border-t border-slate-200 pt-5 md:col-span-2">
+                <h3 className="text-sm font-extrabold text-slate-800">Kontak Keluarga yang Dapat Dihubungi</h3>
+              </div>
+              <div>
+                <label className="lbl">Hubungan</label>
+                <input name="hubunganKeluarga" value={initialForm.hubunganKeluarga} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Nomor Keluarga yang Dapat Dihubungi</label>
+                <input name="noKeluargaDihubungi" value={initialForm.noKeluargaDihubungi} onChange={changeInitialFormNumeric} className="inp" required inputMode="numeric" />
               </div>
             </div>
             <div className="mobile-action-bar justify-end">

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { Storage } from '@google-cloud/storage';
+import { isDuplicatePhoneNumber } from '@/lib/contact-phone';
+import { buildSubmissionRow } from '@/lib/submission-row';
 
 function getGoogleCredentials() {
   const raw = process.env.GOOGLE_CREDENTIALS;
@@ -27,11 +29,6 @@ function getGoogleCredentials() {
 
 function s(v: any) {
   return typeof v === 'string' ? v.trim() : '';
-}
-
-function sheetText(v: any) {
-  const value = s(v).replace(/^'+/, '');
-  return value ? `'${value}` : '';
 }
 
 async function uploadToGCS(file: File, filename: string, credentials: any): Promise<string> {
@@ -85,6 +82,9 @@ export async function POST(req: Request) {
     const nik = s(ktp?.nik);
     const noKK = s(kk?.noKK);
     const pendidikanTerakhir = s(kk?.pendidikanTerakhir) || s(form?.pendidikanTerakhir);
+    const noHp = s(form?.noHp);
+    const hubunganKeluarga = s(form?.hubunganKeluarga);
+    const noKeluargaDihubungi = s(form?.noKeluargaDihubungi);
 
     if (!nik || !noKK) {
       return NextResponse.json({ error: 'Data tidak valid (NIK / NoKK kosong)' }, { status: 400 });
@@ -92,6 +92,14 @@ export async function POST(req: Request) {
 
     if (!pendidikanTerakhir) {
       return NextResponse.json({ error: 'Pendidikan terakhir wajib diisi' }, { status: 400 });
+    }
+
+    if (!hubunganKeluarga || !noKeluargaDihubungi) {
+      return NextResponse.json({ error: 'Data kontak keluarga wajib diisi' }, { status: 400 });
+    }
+
+    if (isDuplicatePhoneNumber(noHp, noKeluargaDihubungi)) {
+      return NextResponse.json({ error: 'Nomor keluarga tidak boleh sama dengan No HP' }, { status: 400 });
     }
 
     console.log('[API] Memulai proses untuk NIK:', nik);
@@ -107,44 +115,9 @@ export async function POST(req: Request) {
 
     console.log('[GCS] Upload Berhasil:', { linkKTP, linkKK });
 
-    const values = [
-      [
-        new Date().toLocaleString('id-ID'),
-        s(form?.namaLengkap), // dari Form Awal
-        sheetText(form?.noHp),
-        s(form?.email),
-        s(form?.agama),
-        s(form?.namaBank),
-        sheetText(form?.noRekening),
-        s(form?.pendidikanTerakhir),
-        s(form?.tanggalLahir),
-        s(form?.tempatLahir),
-        s(form?.domisili),
-        s(form?.provinsi),
-        s(form?.kabKota),
-        s(form?.kecamatan),
-        s(form?.desaKelurahan),
-        sheetText(form?.kodePos),
-        sheetText(ktp?.nik), // Mulai KTP
-        s(ktp?.nama),
-        s(ktp?.tempatLahir),
-        s(ktp?.tanggalLahir),
-        s(ktp?.jenisKelamin),
-        s(ktp?.alamat),
-        sheetText(ktp?.rtRw),
-        s(ktp?.kelDesa),
-        s(ktp?.kecamatan),
-        s(ktp?.agama),
-        s(ktp?.statusPerkawinan),
-        s(ktp?.pekerjaan),
-        s(ktp?.kewarganegaraan),
-        sheetText(noKK),
-        s(form?.pendidikanTerakhir) || s(kk?.pendidikanTerakhir),
-        sheetText(form?.noBpjsTk),
-        linkKTP,
-        linkKK,
-      ],
-    ];
+    const values = [[
+      ...buildSubmissionRow(allData, new Date().toLocaleString('id-ID'), linkKTP, linkKK),
+    ]];
 
     const sheets = google.sheets({ version: 'v4', auth });
 
