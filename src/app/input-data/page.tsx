@@ -105,8 +105,8 @@ const EDUCATION_OPTIONS = [
 
 const STEP_ITEMS = [
   { id: 1, label: 'Data Diri', shortLabel: 'Diri', caption: 'Profil awal' },
-  { id: 2, label: 'Data KTP', shortLabel: 'KTP', caption: 'Scan dan koreksi' },
-  { id: 3, label: 'Data KK', shortLabel: 'KK', caption: 'Finalisasi' },
+  { id: 2, label: 'Data KTP', shortLabel: 'KTP', caption: 'Foto dan isi manual' },
+  { id: 3, label: 'Data KK', shortLabel: 'KK', caption: 'Foto dan isi manual' },
 ];
 
 const KTP_SELECT_OPTIONS: Partial<Record<keyof KTPData, string[]>> = {
@@ -133,15 +133,6 @@ function isValidKtpField(field: keyof KTPData, value: string) {
   return options.includes(value.trim().toUpperCase());
 }
 
-function normalizeKtpData(data: Partial<KTPData> | null | undefined): KTPData {
-  return {
-    ...EMPTY_KTP_DATA,
-    ...Object.fromEntries(
-      Object.entries(data || {}).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : ''])
-    ),
-  };
-}
-
 function buildKtpErrors(data: KTPData): Partial<Record<keyof KTPData, string>> {
   return REQUIRED_KTP_FIELDS.reduce<Partial<Record<keyof KTPData, string>>>((acc, field) => {
     if (!isValidKtpField(field, data[field])) {
@@ -159,8 +150,6 @@ export default function InputDataPage() {
   const [showKtpForm, setShowKtpForm] = useState(false);
   const [showKkForm, setShowKkForm] = useState(false);
 
-  const [loadingKTP, setLoadingKTP] = useState(false);
-  const [loadingKK, setLoadingKK] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // File States
@@ -208,33 +197,8 @@ export default function InputDataPage() {
     if (f) {
       setFileKTP(f);
       setPreviewKTP(URL.createObjectURL(f));
-      setShowKtpForm(false);
+      setShowKtpForm(true);
       setKtpErrors({});
-    }
-  };
-
-  const uploadKTP = async () => {
-    if (!fileKTP) return;
-    setLoadingKTP(true);
-
-    const fd = new FormData();
-    fd.append('file', fileKTP);
-
-    try {
-      const res = await fetch('/api/scan-ktp', { method: 'POST', body: fd });
-      const json = await res.json();
-      if (res.ok) {
-        const nextKtpData = normalizeKtpData(json.data);
-        setKtpData(nextKtpData);
-        setKtpErrors(buildKtpErrors(nextKtpData));
-        setShowKtpForm(true);
-      } else {
-        alert('Gagal Unggah KTP: ' + json.error);
-      }
-    } catch {
-      alert('Terjadi kesalahan sistem saat unggah KTP');
-    } finally {
-      setLoadingKTP(false);
     }
   };
 
@@ -253,34 +217,7 @@ export default function InputDataPage() {
         setPreviewKK(URL.createObjectURL(f)); // Tampilkan preview gambar
       }
 
-      setShowKkForm(false);
-    }
-  };
-
-  const uploadKK = async () => {
-    if (!fileKK) return;
-    setLoadingKK(true);
-
-    const fd = new FormData();
-    fd.append('file', fileKK);
-
-    try {
-      const res = await fetch('/api/scan-kk', { method: 'POST', body: fd });
-      const json = await res.json();
-      if (res.ok) {
-        // UPDATE: Pastikan pendidikanTerakhir di-reset atau di-maintain saat upload ulang
-        setKkHeader({
-          noKK: json.data?.noKK || '',
-          pendidikanTerakhir: kkHeader.pendidikanTerakhir
-        });
-        setShowKkForm(true);
-      } else {
-        alert('Gagal Unggah KK: ' + json.error);
-      }
-    } catch {
-      alert('Terjadi kesalahan sistem saat unggah KK');
-    } finally {
-      setLoadingKK(false);
+      setShowKkForm(true);
     }
   };
 
@@ -587,13 +524,7 @@ export default function InputDataPage() {
                   className="file-input"
                   required
                 />
-                <button
-                  onClick={uploadKTP}
-                  disabled={!fileKTP || loadingKTP}
-                  className="btn btn-primary w-full"
-                >
-                  {loadingKTP ? 'Sedang Memproses...' : 'Unggah KTP Sekarang'}
-                </button>
+                <p className="text-sm text-slate-600">Isi data KTP secara manual setelah memilih foto.</p>
               </div>
 
               {previewKTP && (
@@ -607,7 +538,7 @@ export default function InputDataPage() {
               <div className="section-panel animate-slide-up">
                 <div className="section-head">
                   <h2>Data KTP</h2>
-                  <span>Koreksi hasil OCR</span>
+                  <span>Isi secara manual</span>
                 </div>
 
                 <div className="form-grid mb-6">
@@ -714,7 +645,6 @@ export default function InputDataPage() {
               <div className="upload-panel upload-panel-green">
                 <label className="upload-label">Upload KK (Foto / PDF)</label>
 
-                {/* ACCEPT IMAGE + PDF */}
                 <input
                   type="file"
                   accept="image/*,application/pdf"
@@ -722,14 +652,7 @@ export default function InputDataPage() {
                   className="file-input"
                   required
                 />
-
-                <button
-                  onClick={uploadKK}
-                  disabled={!fileKK || loadingKK}
-                  className="btn btn-success w-full"
-                >
-                  {loadingKK ? 'Sedang Memproses...' : 'Unggah KK Sekarang'}
-                </button>
+                <p className="text-sm text-slate-600">Isi data KK secara manual setelah memilih foto atau PDF.</p>
               </div>
 
               {/* LOGIC PREVIEW KK (Handle PDF UI vs Image UI) */}
