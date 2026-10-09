@@ -83,8 +83,12 @@ export async function POST(req: Request) {
     const noKK = s(kk?.noKK);
     const pendidikanTerakhir = s(kk?.pendidikanTerakhir) || s(form?.pendidikanTerakhir);
     const noHp = s(form?.noHp);
-    const hubunganKeluarga = s(form?.hubunganKeluarga);
-    const noKeluargaDihubungi = s(form?.noKeluargaDihubungi);
+    const namaKontak1 = s(form?.namaKontak1);
+    const hubunganKontak1 = s(form?.hubunganKontak1);
+    const noKontak1 = s(form?.noKontak1);
+    const namaKontak2 = s(form?.namaKontak2);
+    const hubunganKontak2 = s(form?.hubunganKontak2);
+    const noKontak2 = s(form?.noKontak2);
 
     if (!nik || !noKK) {
       return NextResponse.json({ error: 'Data tidak valid (NIK / NoKK kosong)' }, { status: 400 });
@@ -94,11 +98,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Pendidikan terakhir wajib diisi' }, { status: 400 });
     }
 
-    if (!hubunganKeluarga || !noKeluargaDihubungi) {
+    if (!namaKontak1 || !hubunganKontak1 || !noKontak1 || !namaKontak2 || !hubunganKontak2 || !noKontak2) {
       return NextResponse.json({ error: 'Data kontak keluarga wajib diisi' }, { status: 400 });
     }
 
-    if (isDuplicatePhoneNumber(noHp, noKeluargaDihubungi)) {
+    if (isDuplicatePhoneNumber(noHp, noKontak1) || isDuplicatePhoneNumber(noHp, noKontak2)) {
       return NextResponse.json({ error: 'Nomor keluarga tidak boleh sama dengan No HP' }, { status: 400 });
     }
 

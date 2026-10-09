@@ -30,8 +30,12 @@ interface KKHeader {
 interface InitialFormData {
   namaLengkap: string;
   noHp: string;
-  hubunganKeluarga: string;
-  noKeluargaDihubungi: string;
+  namaKontak1: string;
+  hubunganKontak1: string;
+  noKontak1: string;
+  namaKontak2: string;
+  hubunganKontak2: string;
+  noKontak2: string;
   noBpjsTk: string;
   email: string;
   agama: string;
@@ -172,8 +176,12 @@ export default function InputDataPage() {
   const [initialForm, setInitialForm] = useState<InitialFormData>({
     namaLengkap: '',
     noHp: '',
-    hubunganKeluarga: '',
-    noKeluargaDihubungi: '',
+    namaKontak1: '',
+    hubunganKontak1: '',
+    noKontak1: '',
+    namaKontak2: '',
+    hubunganKontak2: '',
+    noKontak2: '',
     noBpjsTk: '',
     email: '',
     agama: '',
@@ -255,7 +263,9 @@ export default function InputDataPage() {
     const requiredInitials: (keyof InitialFormData)[] = [
       'namaLengkap', 'noHp', 'email', 'agama', 'namaBank', 'noRekening', 'pendidikanTerakhir', 
       'tanggalLahir', 'tempatLahir', 'domisili', 'provinsi', 
-      'kabKota', 'kecamatan', 'desaKelurahan', 'kodePos', 'hubunganKeluarga', 'noKeluargaDihubungi'
+      'kabKota', 'kecamatan', 'desaKelurahan', 'kodePos',
+      'namaKontak1', 'hubunganKontak1', 'noKontak1',
+      'namaKontak2', 'hubunganKontak2', 'noKontak2'
     ];
     for (const key of requiredInitials) {
       if (!isFilled(initialForm[key])) {
@@ -264,8 +274,11 @@ export default function InputDataPage() {
       }
     }
 
-    if (isDuplicatePhoneNumber(initialForm.noHp, initialForm.noKeluargaDihubungi)) {
-      alert('Nomor keluarga yang dapat dihubungi tidak boleh sama dengan No HP.');
+    if (
+      isDuplicatePhoneNumber(initialForm.noHp, initialForm.noKontak1)
+      || isDuplicatePhoneNumber(initialForm.noHp, initialForm.noKontak2)
+    ) {
+      alert('Nomor kontak keluarga tidak boleh sama dengan No HP.');
       return;
     }
 
@@ -494,13 +507,35 @@ export default function InputDataPage() {
               <div className="col-span-1 mt-2 border-t border-slate-200 pt-5 md:col-span-2">
                 <h3 className="text-sm font-extrabold text-slate-800">Kontak Keluarga yang Dapat Dihubungi</h3>
               </div>
-              <div>
-                <label className="lbl">Hubungan</label>
-                <input name="hubunganKeluarga" value={initialForm.hubunganKeluarga} onChange={changeInitialForm} className="inp" required />
+              <div className="col-span-1 md:col-span-2">
+                <h4 className="text-sm font-bold text-slate-700">Kontak 1</h4>
+              </div>
+              <div className="col-span-1 md:col-span-2">
+                <label className="lbl">Nama Keluarga yang Dapat Dihubungi</label>
+                <input name="namaKontak1" value={initialForm.namaKontak1} onChange={changeInitialForm} className="inp" required />
               </div>
               <div>
-                <label className="lbl">Nomor Keluarga yang Dapat Dihubungi</label>
-                <input name="noKeluargaDihubungi" value={initialForm.noKeluargaDihubungi} onChange={changeInitialFormNumeric} className="inp" required inputMode="numeric" />
+                <label className="lbl">Hubungan</label>
+                <input name="hubunganKontak1" value={initialForm.hubunganKontak1} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Nomor yang Dapat Dihubungi</label>
+                <input name="noKontak1" value={initialForm.noKontak1} onChange={changeInitialFormNumeric} className="inp" required inputMode="numeric" />
+              </div>
+              <div className="col-span-1 border-t border-slate-200 pt-5 md:col-span-2">
+                <h4 className="text-sm font-bold text-slate-700">Kontak 2</h4>
+              </div>
+              <div className="col-span-1 md:col-span-2">
+                <label className="lbl">Nama Keluarga yang Dapat Dihubungi</label>
+                <input name="namaKontak2" value={initialForm.namaKontak2} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Hubungan</label>
+                <input name="hubunganKontak2" value={initialForm.hubunganKontak2} onChange={changeInitialForm} className="inp" required />
+              </div>
+              <div>
+                <label className="lbl">Nomor yang Dapat Dihubungi</label>
+                <input name="noKontak2" value={initialForm.noKontak2} onChange={changeInitialFormNumeric} className="inp" required inputMode="numeric" />
               </div>
             </div>
             <div className="mobile-action-bar justify-end">
