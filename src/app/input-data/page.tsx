@@ -230,14 +230,17 @@ export default function InputDataPage() {
   };
 
   // --- FORM HANDLERS ---
-  const changeInitialForm = (e: any) => setInitialForm({ ...initialForm, [e.target.name]: e.target.value });
+  const changeInitialForm = (e: any) => {
+    const value = e.target.name === 'email' ? e.target.value : e.target.value.toUpperCase();
+    setInitialForm({ ...initialForm, [e.target.name]: value });
+  };
   const changeInitialFormNumeric = (e: any) => {
     const onlyNums = e.target.value.replace(/[^0-9]/g, '');
     setInitialForm({ ...initialForm, [e.target.name]: onlyNums });
   };
   const changeKTP = (e: any) => {
     const field = e.target.name as keyof KTPData;
-    const value = e.target.value;
+    const value = e.target.value.toUpperCase();
 
     setKtpData({ ...ktpData, [field]: value });
     setKtpErrors((prev) => {
@@ -248,7 +251,7 @@ export default function InputDataPage() {
       return next;
     });
   };
-  const changeKKHead = (e: any) => setKkHeader({ ...kkHeader, [e.target.name]: e.target.value });
+  const changeKKHead = (e: any) => setKkHeader({ ...kkHeader, [e.target.name]: e.target.value.toUpperCase() });
 
   const ktpInputClass = (field: keyof KTPData, extra = '') => {
     return `inp${extra ? ` ${extra}` : ''}${ktpErrors[field] ? ' inp-error' : ''}`;

@@ -61,3 +61,32 @@ test('keeps the approved Google Sheets column order', () => {
     'PENDIDIKAN', "'00999", 'LINK_KTP', 'LINK_KK',
   ]);
 });
+
+test('uppercases text fields while preserving email', () => {
+  const row = submissionRow.buildSubmissionRow?.(
+    {
+      form: {
+        namaLengkap: 'andi pradana',
+        email: 'Andi.Pradana@example.com',
+        domisili: 'jalan melati',
+        namaKontak1: 'siti aminah',
+        hubunganKontak1: 'ibu',
+        namaKontak2: 'budi pradana',
+        hubunganKontak2: 'kakak',
+      },
+      ktp: {
+        nama: 'andi pradana',
+        alamat: 'jalan mawar',
+      },
+      kk: { pendidikanTerakhir: 'diploma iv / strata i' },
+    },
+    'TIMESTAMP',
+    'LINK_KTP',
+    'LINK_KK',
+  );
+
+  assert.deepEqual(
+    [row?.[1], row?.[3], row?.[10], row?.[16], row?.[17], row?.[19], row?.[20], row?.[23], row?.[27], row?.[36]],
+    ['ANDI PRADANA', 'Andi.Pradana@example.com', 'JALAN MELATI', 'SITI AMINAH', 'IBU', 'BUDI PRADANA', 'KAKAK', 'ANDI PRADANA', 'JALAN MAWAR', 'DIPLOMA IV / STRATA I'],
+  );
+});

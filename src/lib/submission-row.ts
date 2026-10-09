@@ -10,6 +10,10 @@ function text(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function uppercaseText(value: unknown) {
+  return text(value).toUpperCase();
+}
+
 function sheetText(value: unknown) {
   const normalized = text(value).replace(/^'+/, '');
   return normalized ? `'${normalized}` : '';
@@ -24,44 +28,44 @@ export function buildSubmissionRow(
   const form = data.form ?? {};
   const ktp = data.ktp ?? {};
   const kk = data.kk ?? {};
-  const pendidikanTerakhir = text(form.pendidikanTerakhir) || text(kk.pendidikanTerakhir);
+  const pendidikanTerakhir = uppercaseText(form.pendidikanTerakhir) || uppercaseText(kk.pendidikanTerakhir);
 
   return [
     createdAt,
-    text(form.namaLengkap),
+    uppercaseText(form.namaLengkap),
     sheetText(form.noHp),
     text(form.email),
-    text(form.agama),
-    text(form.namaBank),
+    uppercaseText(form.agama),
+    uppercaseText(form.namaBank),
     sheetText(form.noRekening),
-    text(form.pendidikanTerakhir),
-    text(form.tanggalLahir),
-    text(form.tempatLahir),
-    text(form.domisili),
-    text(form.provinsi),
-    text(form.kabKota),
-    text(form.kecamatan),
-    text(form.desaKelurahan),
+    uppercaseText(form.pendidikanTerakhir),
+    uppercaseText(form.tanggalLahir),
+    uppercaseText(form.tempatLahir),
+    uppercaseText(form.domisili),
+    uppercaseText(form.provinsi),
+    uppercaseText(form.kabKota),
+    uppercaseText(form.kecamatan),
+    uppercaseText(form.desaKelurahan),
     sheetText(form.kodePos),
-    text(form.namaKontak1),
-    text(form.hubunganKontak1),
+    uppercaseText(form.namaKontak1),
+    uppercaseText(form.hubunganKontak1),
     sheetText(form.noKontak1),
-    text(form.namaKontak2),
-    text(form.hubunganKontak2),
+    uppercaseText(form.namaKontak2),
+    uppercaseText(form.hubunganKontak2),
     sheetText(form.noKontak2),
     sheetText(ktp.nik),
-    text(ktp.nama),
-    text(ktp.tempatLahir),
-    text(ktp.tanggalLahir),
-    text(ktp.jenisKelamin),
-    text(ktp.alamat),
+    uppercaseText(ktp.nama),
+    uppercaseText(ktp.tempatLahir),
+    uppercaseText(ktp.tanggalLahir),
+    uppercaseText(ktp.jenisKelamin),
+    uppercaseText(ktp.alamat),
     sheetText(ktp.rtRw),
-    text(ktp.kelDesa),
-    text(ktp.kecamatan),
-    text(ktp.agama),
-    text(ktp.statusPerkawinan),
-    text(ktp.pekerjaan),
-    text(ktp.kewarganegaraan),
+    uppercaseText(ktp.kelDesa),
+    uppercaseText(ktp.kecamatan),
+    uppercaseText(ktp.agama),
+    uppercaseText(ktp.statusPerkawinan),
+    uppercaseText(ktp.pekerjaan),
+    uppercaseText(ktp.kewarganegaraan),
     sheetText(kk.noKK),
     pendidikanTerakhir,
     sheetText(form.noBpjsTk),
